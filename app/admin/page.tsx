@@ -184,69 +184,57 @@ export default function AdminPage() {
         <div style={{ overflow: "auto", marginTop: 10 }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr key={p.id}>
-  <td>{p.property_code}</td>
-  <td>{p.building_name}</td>
-  <td>{p.address}</td>
-  <td>{p.view_method ?? "-"}</td>
+              <thead>
+  <tr>
+    <th>コード</th>
+    <th>建物</th>
+    <th>住所</th>
+    <th>内見方法</th>
+    <th>Status</th>
+    <th>担当者メール</th>
+    <th>担当者</th>
+    <th>QR</th>
+    <th>Link</th>
+  </tr>
 
-  <td>
-    <select
-      value={p.status}
-      onChange={(e) => updateStatus(p.id, e.target.value)}
-    >
-      <option value="available">available</option>
-      <option value="rented">rented</option>
-      <option value="sold">sold</option>
-    </select>
-  </td>
-
-  <td>{p.manager_email ?? "-"}</td>
-  <td>{p.manager_name ?? "担当者不明"}</td>
-
-  <td>
-    <img src={p.qr_url} width={80} />
-  </td>
-
-  <td>
-    <a href={p.form_url} target="_blank">
-      Open form
-    </a>
-  </td>
-</tr>
             </thead>
             <tbody>
-              {props.map((p) => {
-                const site = process.env.NEXT_PUBLIC_SITE_URL || "";
-                const formUrl = site ? `${site}/inquiry?property_id=${p.id}&via=admin` : `/inquiry?property_id=${p.id}&via=admin`;
-                return (
-                  <tr key={p.id}>
-                    <td style={{ border: "1px solid #eee", padding: 10 }}>
-                      <b>{p.property_code}</b>
-                    </td>
-                    <td style={{ border: "1px solid #eee", padding: 10 }}>{p.building_name}</td>
-                    <td style={{ border: "1px solid #eee", padding: 10 }}>{p.address}</td>
-                    <td style={{ border: "1px solid #eee", padding: 10 }}>{p.view_method}</td>
-                    <td style={{ border: "1px solid #eee", padding: 10 }}>
-                      <select value={p.status} onChange={(e) => updateStatus(p.id, e.target.value)} style={inp}>
-                        <option value="available">available</option>
-                        <option value="sold">sold</option>
-                        <option value="rented">rented</option>
-                      </select>
-                    </td>
-                    <td style={{ border: "1px solid #eee", padding: 10 }}>{p.manager_email || "担当者不明"}</td>
-                    <td style={{ border: "1px solid #eee", padding: 10 }}>
-                      <QRCode value={formUrl} size={88} />
-                    </td>
-                    <td style={{ border: "1px solid #eee", padding: 10 }}>
-                      <a href={formUrl} target="_blank" rel="noreferrer">
-                        Open form
-                      </a>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
+  {properties.map((p) => (
+    <tr key={p.id}>
+      <td>{p.property_code}</td>
+      <td>{p.building_name}</td>
+      <td>{p.address}</td>
+      <td>{p.view_method ?? "-"}</td>
+
+      <td>
+        <select
+          value={p.status}
+          onChange={(e) => updateStatus(p.id, e.target.value)}
+        >
+          <option value="available">available</option>
+          <option value="rented">rented</option>
+          <option value="sold">sold</option>
+        </select>
+      </td>
+
+      <td>{p.manager_email ?? "-"}</td>
+      <td>{p.manager_name ?? "担当者不明"}</td>
+
+      <td>{p.qr_url ? <img src={p.qr_url} width={80} /> : "-"}</td>
+
+      <td>
+        {p.form_url ? (
+          <a href={p.form_url} target="_blank" rel="noreferrer">
+            Open form
+          </a>
+        ) : (
+          "-"
+        )}
+      </td>
+    </tr>
+  ))}
+</tbody>
+
           </table>
         </div>
       </div>
