@@ -19,6 +19,7 @@ export const InquirySchema = z.object({
   person_name: z.string().min(1),
   person_mobile: z.string().min(1),
   person_gmail: z.string().email(),
+  tanto_name: z.string().optional(),
 
   inquiry_type: z.enum(["viewing","purchase","other"]),
   visit_datetime: z.string().optional().default(""),
