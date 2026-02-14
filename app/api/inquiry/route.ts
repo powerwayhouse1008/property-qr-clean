@@ -68,7 +68,7 @@ export async function POST(req: Request) {
 携帯: ${body.person_mobile}
 Gmail: ${body.person_gmail}
 
-担当者: ${tanto}
+担当者: ${body.tanto_name ?? ""}
 `;
 
     await postTeams(msg);
