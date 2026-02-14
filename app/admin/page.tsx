@@ -184,17 +184,36 @@ export default function AdminPage() {
         <div style={{ overflow: "auto", marginTop: 10 }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ background: "#fafafa" }}>
-                <th style={{ border: "1px solid #eee", padding: 10 }}>コード</th>
-                <th style={{ border: "1px solid #eee", padding: 10 }}>建物</th>
-                <th style={{ border: "1px solid #eee", padding: 10 }}>住所</th>
-                <th style={{ border: "1px solid #eee", padding: 10 }}>内見</th>
-                <th style={{ border: "1px solid #eee", padding: 10 }}>Status</th>
-                <th style={{ border: "1px solid #eee", padding: 10 }}>担当者メール</th>
-                <th style={{ border: "1px solid #eee", padding: 10 }}>担当者</th>
-                <th style={{ border: "1px solid #eee", padding: 10 }}>QR</th>
-                <th style={{ border: "1px solid #eee", padding: 10 }}>Link</th>
-              </tr>
+              <tr key={p.id}>
+  <td>{p.property_code}</td>
+  <td>{p.building_name}</td>
+  <td>{p.address}</td>
+  <td>{p.view_method ?? "-"}</td>
+
+  <td>
+    <select
+      value={p.status}
+      onChange={(e) => updateStatus(p.id, e.target.value)}
+    >
+      <option value="available">available</option>
+      <option value="rented">rented</option>
+      <option value="sold">sold</option>
+    </select>
+  </td>
+
+  <td>{p.manager_email ?? "-"}</td>
+  <td>{p.manager_name ?? "担当者不明"}</td>
+
+  <td>
+    <img src={p.qr_url} width={80} />
+  </td>
+
+  <td>
+    <a href={p.form_url} target="_blank">
+      Open form
+    </a>
+  </td>
+</tr>
             </thead>
             <tbody>
               {props.map((p) => {
