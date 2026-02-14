@@ -36,6 +36,8 @@ export async function POST(req: Request) {
       .select("*")
       .eq("id", body.property_id)
       .single();
+const managerName = prop?.manager_name ?? "担当者不明";
+const managerEmail = prop?.manager_email ?? "-";
 
     if (pe || !prop) {
       return NextResponse.json(
