@@ -94,7 +94,8 @@ export async function POST(req: Request) {
 携帯: ${body.person_mobile}
 Gmail: ${body.person_gmail}
 
-担当者: ${manager}
+担当者: ${managerName}
+担当者メール: ${managerEmail}
 `;
 
     // 6) Teams notify
