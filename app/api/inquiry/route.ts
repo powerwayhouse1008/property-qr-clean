@@ -15,7 +15,19 @@ async function postTeams(message: string) {
   });
 }
 
+export async function POST(import { Resend } from "resend";
+
 export async function POST(req: Request) {
+  const RESEND_KEY = process.env.RESEND_API_KEY;
+  if (!RESEND_KEY) {
+    return Response.json({ ok: false, error: "Missing RESEND_API_KEY" }, { status: 500 });
+  }
+
+  const resend = new Resend(RESEND_KEY);
+
+  // ... send email ở đây
+}
+) {
   try {
     const body = InquirySchema.parse(await req.json());
 
