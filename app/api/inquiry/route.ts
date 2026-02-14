@@ -47,7 +47,7 @@ export async function POST(req: Request) {
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
-    const 담당者 = prop.manager_email ? prop.manager_email : "担当者不明";
+    const 担当者 = prop.manager_email ? prop.manager_email : "担当者不明";
 
     const msg =
 `【物件お問い合わせ】
