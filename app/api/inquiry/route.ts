@@ -1,10 +1,29 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
-import { InquirySchema } from "@/lib/validators";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY!);
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
 
+    const RESEND_KEY = process.env.RESEND_API_KEY;
+    if (!RESEND_KEY) {
+      return NextResponse.json({ ok: false, error: "Missing RESEND_API_KEY" }, { status: 500 });
+    }
+
+    const resend = new Resend(RESEND_KEY);
+
+    await resend.emails.send({
+      from: "onboarding@resend.dev",
+      to: "your@email.com",
+      subject: "New Inquiry",
+      text: JSON.stringify(body, null, 2),
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    return NextResponse.json({ ok: false, error: e?.message ?? String(e) }, { status: 400 });
+  }
+}
 async function postTeams(message: string) {
   const url = process.env.TEAMS_WEBHOOK_URL;
   if (!url) return;
