@@ -191,6 +191,7 @@ export default function AdminPage() {
                 <th style={{ border: "1px solid #eee", padding: 10 }}>内見</th>
                 <th style={{ border: "1px solid #eee", padding: 10 }}>Status</th>
                 <th style={{ border: "1px solid #eee", padding: 10 }}>担当者メール</th>
+                <th style={{ border: "1px solid #eee", padding: 10 }}>担当者</th>
                 <th style={{ border: "1px solid #eee", padding: 10 }}>QR</th>
                 <th style={{ border: "1px solid #eee", padding: 10 }}>Link</th>
               </tr>
