@@ -16,10 +16,7 @@ type Property = {
   manager_name?: string | null;
   manager_email?: string | null;
 
-  // nếu API của bạn có trả về (để hiển thị list)
-  form_url?: string | null;
-  qr_url?: string | null;
-
+  form_url?: string | null; // ✅ dùng form_url để render QR + Link
   created_at?: string;
 };
 
@@ -104,12 +101,14 @@ export default function AdminPage() {
     padding: "10px 8px",
     borderBottom: "1px solid #eee",
     whiteSpace: "nowrap",
+    fontWeight: 800,
   };
 
   const td: React.CSSProperties = {
     padding: "10px 8px",
     borderBottom: "1px solid #f1f1f1",
     verticalAlign: "middle",
+    whiteSpace: "nowrap",
   };
 
   return (
@@ -203,7 +202,9 @@ export default function AdminPage() {
             </div>
 
             <div style={{ background: "#fafafa", border: "1px solid #eee", borderRadius: 12, padding: 10 }}>
-              <QRCode value={created.formUrl} size={160} />
+              <a href={created.formUrl} target="_blank" rel="noreferrer" title="Open form">
+                <QRCode value={created.formUrl} size={160} />
+              </a>
             </div>
           </div>
         )}
@@ -264,16 +265,28 @@ export default function AdminPage() {
                   <td style={td}>{p.manager_email ?? "-"}</td>
                   <td style={td}>{p.manager_name ?? "担当者不明"}</td>
 
+                  {/* ✅ QR đúng cột QR */}
                   <td style={td}>
                     {p.form_url ? (
-                      <div style={{ background: "#fafafa", border: "1px solid #eee", borderRadius: 10, padding: 6, display: "inline-block" }}>
-                        <QRCode value={p.form_url} size={80} />
-                      </div>
+                      <a href={p.form_url} target="_blank" rel="noreferrer" title="Open form">
+                        <div
+                          style={{
+                            background: "#fafafa",
+                            border: "1px solid #eee",
+                            borderRadius: 10,
+                            padding: 6,
+                            display: "inline-block",
+                          }}
+                        >
+                          <QRCode value={p.form_url} size={80} />
+                        </div>
+                      </a>
                     ) : (
                       "-"
                     )}
                   </td>
 
+                  {/* ✅ Link đúng cột Link */}
                   <td style={td}>
                     {p.form_url ? (
                       <a href={p.form_url} target="_blank" rel="noreferrer">
