@@ -3,16 +3,24 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode.react";
 
+type Status = "available" | "sold" | "rented";
+
 type Property = {
   id: string;
   property_code: string;
   building_name: string;
   address: string;
   view_method: string;
-  status: "available" | "sold" | "rented";
-  manager_name?: string;
-  manager_email: string;
-  created_at: string;
+  status: Status;
+
+  manager_name?: string | null;
+  manager_email?: string | null;
+
+  // nếu API của bạn có trả về (để hiển thị list)
+  form_url?: string | null;
+  qr_url?: string | null;
+
+  created_at?: string;
 };
 
 export default function AdminPage() {
@@ -25,17 +33,21 @@ export default function AdminPage() {
     building_name: "",
     address: "",
     view_method: "",
-    status: "available",
+    status: "available" as Status,
     manager_name: "",
     manager_email: "",
   });
 
   async function load() {
-    const r = await fetch("/api/admin/properties");
-    const j = await r.json();
-    if (!j.ok) return setMsg("❌ " + j.error);
-    setProps(j.properties);
-    setMsg(`✅ loaded ${j.properties.length} properties`);
+    try {
+      const r = await fetch("/api/admin/properties", { cache: "no-store" });
+      const j = await r.json();
+      if (!j.ok) return setMsg("❌ " + j.error);
+      setProps(j.properties as Property[]);
+      setMsg(`✅ loaded ${j.properties.length} properties`);
+    } catch (e: any) {
+      setMsg("❌ " + (e?.message ?? String(e)));
+    }
   }
 
   useEffect(() => {
@@ -45,19 +57,22 @@ export default function AdminPage() {
   async function create() {
     setMsg("...");
     setCreated(null);
+
     const r = await fetch("/api/admin/property", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
+
     const j = await r.json();
     if (!j.ok) return setMsg("❌ " + j.error);
+
     setCreated({ formUrl: j.formUrl, code: j.property.property_code });
     setMsg("✅ created " + j.property.property_code);
     await load();
   }
 
-  async function updateStatus(id: string, status: string) {
+  async function updateStatus(id: string, status: Status) {
     const r = await fetch("/api/admin/status", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -75,6 +90,7 @@ export default function AdminPage() {
     padding: 16,
     marginTop: 12,
   };
+
   const inp: React.CSSProperties = {
     width: "100%",
     padding: "10px 12px",
@@ -83,14 +99,29 @@ export default function AdminPage() {
     boxSizing: "border-box",
   };
 
+  const th: React.CSSProperties = {
+    textAlign: "left",
+    padding: "10px 8px",
+    borderBottom: "1px solid #eee",
+    whiteSpace: "nowrap",
+  };
+
+  const td: React.CSSProperties = {
+    padding: "10px 8px",
+    borderBottom: "1px solid #f1f1f1",
+    verticalAlign: "middle",
+  };
+
   return (
     <div style={{ maxWidth: 1100, margin: "20px auto", padding: 14, fontFamily: "system-ui" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <h2 style={{ margin: 0 }}>Admin - 物件管理</h2>
       </div>
 
+      {/* Create */}
       <div style={card}>
         <h3 style={{ marginTop: 0 }}>物件登録 + QR</h3>
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <input
             style={inp}
@@ -116,17 +147,24 @@ export default function AdminPage() {
             value={form.view_method}
             onChange={(e) => setForm({ ...form, view_method: e.target.value })}
           />
-          <select style={inp} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+
+          <select
+            style={inp}
+            value={form.status}
+            onChange={(e) => setForm({ ...form, status: e.target.value as Status })}
+          >
             <option value="available">募集中 (available)</option>
             <option value="sold">成約 (sold)</option>
             <option value="rented">賃貸中 (rented)</option>
           </select>
+
           <input
             style={inp}
             placeholder="担当者名 (manager_name)"
             value={form.manager_name}
             onChange={(e) => setForm({ ...form, manager_name: e.target.value })}
           />
+
           <input
             style={inp}
             placeholder="担当者メール (manager_email) *"
@@ -163,6 +201,7 @@ export default function AdminPage() {
                 </a>
               </div>
             </div>
+
             <div style={{ background: "#fafafa", border: "1px solid #eee", borderRadius: 12, padding: 10 }}>
               <QRCode value={created.formUrl} size={160} />
             </div>
@@ -172,11 +211,20 @@ export default function AdminPage() {
         <div style={{ marginTop: 10, fontWeight: 700 }}>{msg}</div>
       </div>
 
+      {/* List */}
       <div style={card}>
         <h3 style={{ marginTop: 0 }}>物件一覧（ステータス変更）</h3>
+
         <button
           onClick={load}
-          style={{ padding: "8px 12px", borderRadius: 12, border: "1px solid #ddd", background: "#f5f5f5", cursor: "pointer", fontWeight: 700 }}
+          style={{
+            padding: "8px 12px",
+            borderRadius: 12,
+            border: "1px solid #ddd",
+            background: "#f5f5f5",
+            cursor: "pointer",
+            fontWeight: 700,
+          }}
         >
           Reload
         </button>
@@ -184,57 +232,68 @@ export default function AdminPage() {
         <div style={{ overflow: "auto", marginTop: 10 }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <thead>
-  <tr>
-    <th>コード</th>
-    <th>建物</th>
-    <th>住所</th>
-    <th>内見方法</th>
-    <th>Status</th>
-    <th>担当者メール</th>
-    <th>担当者</th>
-    <th>QR</th>
-    <th>Link</th>
-  </tr>
-
+              <tr>
+                <th style={th}>コード</th>
+                <th style={th}>建物</th>
+                <th style={th}>住所</th>
+                <th style={th}>内見方法</th>
+                <th style={th}>Status</th>
+                <th style={th}>担当者メール</th>
+                <th style={th}>担当者</th>
+                <th style={th}>QR</th>
+                <th style={th}>Link</th>
+              </tr>
             </thead>
+
             <tbody>
-  {properties.map((p) => (
-    <tr key={p.id}>
-      <td>{p.property_code}</td>
-      <td>{p.building_name}</td>
-      <td>{p.address}</td>
-      <td>{p.view_method ?? "-"}</td>
+              {props.map((p) => (
+                <tr key={p.id}>
+                  <td style={td}>{p.property_code}</td>
+                  <td style={td}>{p.building_name}</td>
+                  <td style={td}>{p.address}</td>
+                  <td style={td}>{p.view_method ?? "-"}</td>
 
-      <td>
-        <select
-          value={p.status}
-          onChange={(e) => updateStatus(p.id, e.target.value)}
-        >
-          <option value="available">available</option>
-          <option value="rented">rented</option>
-          <option value="sold">sold</option>
-        </select>
-      </td>
+                  <td style={td}>
+                    <select value={p.status} onChange={(e) => updateStatus(p.id, e.target.value as Status)}>
+                      <option value="available">available</option>
+                      <option value="rented">rented</option>
+                      <option value="sold">sold</option>
+                    </select>
+                  </td>
 
-      <td>{p.manager_email ?? "-"}</td>
-      <td>{p.manager_name ?? "担当者不明"}</td>
+                  <td style={td}>{p.manager_email ?? "-"}</td>
+                  <td style={td}>{p.manager_name ?? "担当者不明"}</td>
 
-      <td>{p.qr_url ? <img src={p.qr_url} width={80} /> : "-"}</td>
+                  <td style={td}>
+                    {p.form_url ? (
+                      <div style={{ background: "#fafafa", border: "1px solid #eee", borderRadius: 10, padding: 6, display: "inline-block" }}>
+                        <QRCode value={p.form_url} size={80} />
+                      </div>
+                    ) : (
+                      "-"
+                    )}
+                  </td>
 
-      <td>
-        {p.form_url ? (
-          <a href={p.form_url} target="_blank" rel="noreferrer">
-            Open form
-          </a>
-        ) : (
-          "-"
-        )}
-      </td>
-    </tr>
-  ))}
-</tbody>
+                  <td style={td}>
+                    {p.form_url ? (
+                      <a href={p.form_url} target="_blank" rel="noreferrer">
+                        Open form
+                      </a>
+                    ) : (
+                      "-"
+                    )}
+                  </td>
+                </tr>
+              ))}
 
+              {props.length === 0 && (
+                <tr>
+                  <td style={td} colSpan={9}>
+                    (no data)
+                  </td>
+                </tr>
+              )}
+            </tbody>
           </table>
         </div>
       </div>
