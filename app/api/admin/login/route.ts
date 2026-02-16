@@ -18,12 +18,12 @@ export async function POST(req: Request) {
 
   // cookie 7 ngày
   res.cookies.set("admin_auth", "1", {
-    httpOnly: true,
-    secure: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  path: "/",
+  maxAge: 60 * 60 * 24 * 7,
+});
 
   return res;
 }
