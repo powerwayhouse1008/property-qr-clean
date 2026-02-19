@@ -120,7 +120,6 @@ export default function InquiryPage() {
               {p.property_code} / {p.building_name}
             </div>
             <div>住所: {p.address}</div>
-            <div>内見方法: {p.view_method}</div>
             <div>
               ステータス: <b>{p.status}</b>
             </div>
