@@ -128,27 +128,37 @@ ${
     let teamsOk = false;
     let managerMailOk = false;
     let customerMailOk = false;
+  const notifyErrors: Record<string, string> = {};
+    const toErrMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
     // Teams
     try {
-      await postTeams(msgInternal);
-      teamsOk = true;
+     if (!process.env.TEAMS_WEBHOOK_URL) {
+        notifyErrors.teams = "TEAMS_WEBHOOK_URL is missing";
+      } else {
+        await postTeams(msgInternal);
+        teamsOk = true;
+      }
     } catch (e) {
       console.error("Teams send failed:", e);
     }
 
     // Mail to manager (if exists)
     try {
-      if (prop.manager_email) {
+       const managerTo = (prop.manager_email ?? "").trim();
+      if (!managerTo) {
+        notifyErrors.managerMail = "manager_email is empty on this property";
+      } else {
         await resend.emails.send({
           from,
-          to: prop.manager_email,
+           to: managerTo,
           subject: `【Inquiry】${prop.property_code ?? ""} ${prop.building_name ?? ""} (${prop.status ?? ""})`,
           text: msgInternal,
         });
         managerMailOk = true;
       }
     } catch (e) {
+      notifyErrors.managerMail = toErrMsg(e);
       console.error("Manager email send failed:", e);
     }
 
@@ -162,13 +172,18 @@ ${
       });
       customerMailOk = true;
     } catch (e) {
+       notifyErrors.customerMail = toErrMsg(e);
       console.error("Customer email send failed:", e);
     }
 
-    // ✅ Return notify status so bạn nhìn thấy ngay
+   
     return NextResponse.json({
       ok: true,
       notify: { teamsOk, managerMailOk, customerMailOk },
+      notifyErrors,
+      warning: Object.keys(notifyErrors).length
+        ? "Inquiry was saved, but some notifications failed."
+        : "",
     });
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message ?? String(e) }, { status: 400 });
