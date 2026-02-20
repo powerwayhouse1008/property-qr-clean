@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { supabaseAdmin } from "@/lib/supabase";
 import { InquirySchema } from "@/lib/validators";
-
+import { ZodError } from "zod";
 async function postTeams(message: string) {
   const url = process.env.TEAMS_WEBHOOK_URL;
   if (!url) return;
@@ -185,7 +185,14 @@ ${
         ? "Inquiry was saved, but some notifications failed."
         : "",
     });
-  } catch (e: any) {
+  } catch (e: any) { if (e instanceof ZodError) {
+      const hasMailError = e.issues.some((issue) => issue.path[0] === "person_gmail");
+      const message = hasMailError
+        ? "メールアドレスの形式が正しくありません。"
+        : "入力内容をご確認ください。";
+      return NextResponse.json({ ok: false, error: message }, { status: 400 });
+    }
+
     return NextResponse.json({ ok: false, error: e?.message ?? String(e) }, { status: 400 });
   }
 }
