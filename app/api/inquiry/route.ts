@@ -8,11 +8,16 @@ async function postTeams(message: string) {
   const url = process.env.TEAMS_WEBHOOK_URL;
   if (!url) return;
 
-  await fetch(url, {
+  const r = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text: message }),
   });
+
+  if (!r.ok) {
+    const t = await r.text().catch(() => "");
+    throw new Error(`Teams webhook failed: ${r.status} ${t}`);
+  }
 }
 
 export async function POST(req: Request) {
@@ -20,15 +25,21 @@ export async function POST(req: Request) {
     // 1) ENV checks
     const RESEND_KEY = process.env.RESEND_API_KEY;
     if (!RESEND_KEY) {
-      return NextResponse.json(
-        { ok: false, error: "Missing RESEND_API_KEY" },
-        { status: 500 }
-      );
+      return NextResponse.json({ ok: false, error: "Missing RESEND_API_KEY" }, { status: 500 });
     }
+
+    // IMPORTANT: MAIL_FROM nên là sender đã verify trong Resend
+    const from = process.env.MAIL_FROM;
+    if (!from) {
+      return NextResponse.json({ ok: false, error: "Missing MAIL_FROM (must be a verified sender in Resend)" }, { status: 500 });
+    }
+
     const resend = new Resend(RESEND_KEY);
 
     // 2) Validate body
     const body = InquirySchema.parse(await req.json());
+    const isViewing = body.inquiry_type === "viewing";
+    const isPurchase = body.inquiry_type === "purchase";
 
     // 3) Load property
     const { data: prop, error: pe } = await supabaseAdmin
@@ -36,16 +47,13 @@ export async function POST(req: Request) {
       .select("*")
       .eq("id", body.property_id)
       .single();
-const managerName = prop?.manager_name ?? "担当者不明";
-const managerEmail = prop?.manager_email ?? "-";
 
     if (pe || !prop) {
-      return NextResponse.json(
-        { ok: false, error: pe?.message ?? "Property not found" },
-        { status: 400 }
-      );
+      return NextResponse.json({ ok: false, error: pe?.message ?? "Property not found" }, { status: 400 });
     }
 
+    const managerName = prop.manager_name ?? "担当者不明";
+    const managerEmail = prop.manager_email ?? "-";
     const status_at_submit = prop.status ?? null;
 
     // 4) Insert inquiry
@@ -75,35 +83,16 @@ const managerEmail = prop?.manager_email ?? "-";
       return NextResponse.json({ ok: false, error: ie.message }, { status: 400 });
     }
 
-    // 5) Build message (KHÔNG dùng body.tanto_name vì schema bạn không có field này)
-    const manager = prop.manager_email ?? "担当者不明";
-
-    // ===== Build dynamic message =====
-
-const isViewing = body.inquiry_type === "viewing";
-
-const msg = `【物件お問い合わせ】
+    // ===== 5) Build messages =====
+    // Internal message (Teams + Manager): KHÔNG có 内見方法
+    const msgInternal = `【物件お問い合わせ】
 
 物件: ${prop.property_code ?? "-"} / ${prop.building_name ?? "-"}
 住所: ${prop.address ?? "-"}
 ステータス: ${prop.status ?? "-"}
 
 種別: ${body.inquiry_type}
-
-${
-  isViewing
-    ? `内見方法: ${prop.view_method ?? "-"}
-内見日時: ${body.visit_datetime ?? "-"}`
-    : ""
-}
-
-${
-  body.inquiry_type === "purchase"
-    ? `購入資料: ${body.purchase_file_url ?? "-"}`
-    : ""
-}
-
-名刺: ${body.business_card_url ?? "-"}
+${isViewing ? `内見日時: ${body.visit_datetime ?? "-"}\n` : ""}${isPurchase ? `購入資料: ${body.purchase_file_url ?? "-"}\n` : ""}名刺: ${body.business_card_url ?? "-"}
 その他: ${body.other_text ?? "-"}
 
 会社名: ${body.company_name}
@@ -116,47 +105,71 @@ Gmail: ${body.person_gmail}
 担当者メール: ${managerEmail}
 `;
 
-    // 6) Teams notify
-    await postTeams(msg);
-
-    // 7) Email notify
-    const from = process.env.MAIL_FROM || "Property <no-reply@example.com>";
-
-    // gửi cho 담당자 nếu có email
-    if (prop.manager_email) {
-      await resend.emails.send({
-        from,
-        to: prop.manager_email,
-        subject: `【Inquiry】${prop.property_code ?? ""} ${prop.building_name ?? ""} (${prop.status ?? ""})`,
-        text: msg,
-      });
-    }
-
-    // gửi confirm cho người gửi (khách)
-    await resend.emails.send({
-  from,
-  to: body.person_gmail,
-  subject: `受付完了：${prop.property_code ?? ""} ${prop.building_name ?? ""}`,
-  text: `お問い合わせありがとうございます。受付完了しました。
+    // Customer confirmation email: CHỈ khi viewing mới có 内見方法 + 内見日時
+    const msgCustomer = `お問い合わせありがとうございます。受付完了しました。
 
 物件: ${prop.property_code ?? "-"} ${prop.building_name ?? "-"}
+住所: ${prop.address ?? "-"}
+ステータス: ${prop.status ?? "-"}
 種別: ${body.inquiry_type}
 
 ${
   isViewing
     ? `内見方法: ${prop.view_method ?? "-"}
 内見日時: ${body.visit_datetime ?? "-"}`
+    : isPurchase
+    ? `購入資料: ${body.purchase_file_url ?? "-"}`
     : ""
 }
-`,
-});
+`;
 
-    return NextResponse.json({ ok: true });
+    // ===== 6) Notify with debug flags =====
+    let teamsOk = false;
+    let managerMailOk = false;
+    let customerMailOk = false;
+
+    // Teams
+    try {
+      await postTeams(msgInternal);
+      teamsOk = true;
+    } catch (e) {
+      console.error("Teams send failed:", e);
+    }
+
+    // Mail to manager (if exists)
+    try {
+      if (prop.manager_email) {
+        await resend.emails.send({
+          from,
+          to: prop.manager_email,
+          subject: `【Inquiry】${prop.property_code ?? ""} ${prop.building_name ?? ""} (${prop.status ?? ""})`,
+          text: msgInternal,
+        });
+        managerMailOk = true;
+      }
+    } catch (e) {
+      console.error("Manager email send failed:", e);
+    }
+
+    // Mail to customer (always)
+    try {
+      await resend.emails.send({
+        from,
+        to: body.person_gmail,
+        subject: `受付完了：${prop.property_code ?? ""} ${prop.building_name ?? ""}`,
+        text: msgCustomer,
+      });
+      customerMailOk = true;
+    } catch (e) {
+      console.error("Customer email send failed:", e);
+    }
+
+    // ✅ Return notify status so bạn nhìn thấy ngay
+    return NextResponse.json({
+      ok: true,
+      notify: { teamsOk, managerMailOk, customerMailOk },
+    });
   } catch (e: any) {
-    return NextResponse.json(
-      { ok: false, error: e?.message ?? String(e) },
-      { status: 400 }
-    );
+    return NextResponse.json({ ok: false, error: e?.message ?? String(e) }, { status: 400 });
   }
 }
-
