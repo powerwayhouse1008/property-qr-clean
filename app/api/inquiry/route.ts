@@ -40,7 +40,8 @@ export async function POST(req: Request) {
     const body = InquirySchema.parse(await req.json());
     const isViewing = body.inquiry_type === "viewing";
     const isPurchase = body.inquiry_type === "purchase";
-
+   const visitDatetime = body.visit_datetime?.trim() ? body.visit_datetime : null;
+    const purchaseFileUrl = body.purchase_file_url?.trim() ? body.purchase_file_url : null;
     // 3) Load property
     const { data: prop, error: pe } = await supabaseAdmin
       .from("properties")
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
       {
         property_id: body.property_id,
         inquiry_type: body.inquiry_type,
-        visit_datetime: body.visit_datetime ?? null,
+          visit_datetime: visitDatetime,
 
         company_name: body.company_name,
         company_phone: body.company_phone,
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
 
         other_text: body.other_text ?? "",
         business_card_url: body.business_card_url ?? null,
-        purchase_file_url: body.purchase_file_url ?? null,
+        purchase_file_url: purchaseFileUrl,
 
         status_at_submit,
         created_at: new Date().toISOString(),
@@ -92,7 +93,7 @@ export async function POST(req: Request) {
 ステータス: ${prop.status ?? "-"}
 
 種別: ${body.inquiry_type}
-${isViewing ? `内見日時: ${body.visit_datetime ?? "-"}\n` : ""}${isPurchase ? `購入資料: ${body.purchase_file_url ?? "-"}\n` : ""}名刺: ${body.business_card_url ?? "-"}
+${isViewing ? `内見日時: ${visitDatetime ?? "-"}\n` : ""}${isPurchase ? `購入資料: ${purchaseFileUrl ?? "-"}\n` : ""}名刺: ${body.business_card_url ?? "-"}
 その他: ${body.other_text ?? "-"}
 
 会社名: ${body.company_name}
@@ -116,9 +117,9 @@ Gmail: ${body.person_gmail}
 ${
   isViewing
     ? `内見方法: ${prop.view_method ?? "-"}
-内見日時: ${body.visit_datetime ?? "-"}`
+内見日時: ${visitDatetime ?? "-"}`
     : isPurchase
-    ? `購入資料: ${body.purchase_file_url ?? "-"}`
+    ? `購入資料: ${purchaseFileUrl ?? "-"}`
     : ""
 }
 `;
