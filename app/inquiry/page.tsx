@@ -322,15 +322,6 @@ export default function InquiryPage() {
             </div>
           </div>
 
-          {/* ✅ 内見方法: chỉ hiển thị khi type === viewing */}
-          {type === "viewing" && p?.view_method && (
-            <div style={section}>
-              <div style={sectionTitle}>内見方法</div>
-              <div style={{ color: "#0f172a", fontWeight: 700 }}>{p.view_method}</div>
-              <div style={hint}>※ 内見をご希望の場合のみ表示されます。内見日時を選択して送信してください。</div>
-            </div>
-          )}
-
           {/* Form inputs */}
           <div style={section}>
             <div style={sectionTitle}>お客様情報</div>
