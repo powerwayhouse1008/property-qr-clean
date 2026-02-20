@@ -389,7 +389,6 @@ export default function InquiryPage() {
           {/* Show view_method ONLY when viewing */}
           {type === "viewing" && (
             <div style={section}>
-              <div style={sectionTitle}>内見方法</div>
               <div style={{ color: "#334155", lineHeight: 1.7 }}>
                 {p?.view_method ? p.view_method : "（未設定）"}
               </div>
