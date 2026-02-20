@@ -387,16 +387,7 @@ export default function InquiryPage() {
           </div>
 
           {/* Show view_method ONLY when viewing */}
-          {type === "viewing" && (
-            <div style={section}>
-              <div style={{ color: "#334155", lineHeight: 1.7 }}>
-                {p?.view_method ? p.view_method : "（未設定）"}
-              </div>
-              <div style={hint}>
-                ※ 内見をご希望の場合のみ表示されます。内見日時を選択して送信してください。
-              </div>
-            </div>
-          )}
+          
 
           {/* Form inputs */}
           <div style={section}>
