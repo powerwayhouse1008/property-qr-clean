@@ -78,15 +78,31 @@ const managerEmail = prop?.manager_email ?? "-";
     // 5) Build message (KHÔNG dùng body.tanto_name vì schema bạn không có field này)
     const manager = prop.manager_email ?? "担当者不明";
 
-    const msg = `【物件お問い合わせ】
+    // ===== Build dynamic message =====
+
+const isViewing = body.inquiry_type === "viewing";
+
+const msg = `【物件お問い合わせ】
+
 物件: ${prop.property_code ?? "-"} / ${prop.building_name ?? "-"}
 住所: ${prop.address ?? "-"}
-内見方法: ${prop.view_method ?? "-"}
 ステータス: ${prop.status ?? "-"}
 
 種別: ${body.inquiry_type}
-内見日時: ${body.visit_datetime ?? "-"}
-購入資料: ${body.purchase_file_url ?? "-"}
+
+${
+  isViewing
+    ? `内見方法: ${prop.view_method ?? "-"}
+内見日時: ${body.visit_datetime ?? "-"}`
+    : ""
+}
+
+${
+  body.inquiry_type === "purchase"
+    ? `購入資料: ${body.purchase_file_url ?? "-"}`
+    : ""
+}
+
 名刺: ${body.business_card_url ?? "-"}
 その他: ${body.other_text ?? "-"}
 
@@ -118,15 +134,22 @@ Gmail: ${body.person_gmail}
 
     // gửi confirm cho người gửi (khách)
     await resend.emails.send({
-      from,
-      to: body.person_gmail,
-      subject: `受付完了：${prop.property_code ?? ""} ${prop.building_name ?? ""}`,
-      text: `お問い合わせありがとうございます。受付完了しました。
+  from,
+  to: body.person_gmail,
+  subject: `受付完了：${prop.property_code ?? ""} ${prop.building_name ?? ""}`,
+  text: `お問い合わせありがとうございます。受付完了しました。
+
 物件: ${prop.property_code ?? "-"} ${prop.building_name ?? "-"}
 種別: ${body.inquiry_type}
-内見日時: ${body.visit_datetime ?? "-"}
+
+${
+  isViewing
+    ? `内見方法: ${prop.view_method ?? "-"}
+内見日時: ${body.visit_datetime ?? "-"}`
+    : ""
+}
 `,
-    });
+});
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
