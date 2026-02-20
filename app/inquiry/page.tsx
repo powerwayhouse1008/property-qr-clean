@@ -43,14 +43,29 @@ export default function InquiryPage() {
   }, [property_id]);
 
   async function uploadOne(file: File) {
-    const fd = new FormData();
-    fd.append("file", file);
-    const r = await fetch("/api/upload", { method: "POST", body: fd });
-    const j = await r.json();
-    if (!j.ok) throw new Error(j.error);
-    return j.url as string;
+  // ✅ chặn trước để khỏi dính 413 (Request Entity Too Large)
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error(`ファイル容量が大きすぎます（最大 ${MAX_UPLOAD_MB}MB）`);
   }
 
+  const fd = new FormData();
+  fd.append("file", file);
+
+  const r = await fetch("/api/upload", { method: "POST", body: fd });
+
+  // ✅ Vercel 413 trả về text/html → không parse json được
+  const text = await r.text();
+  let j: any;
+  try {
+    j = JSON.parse(text);
+  } catch {
+    // ví dụ: "Request Entity Too Large"
+    throw new Error(`Upload failed (${r.status}): ${text.slice(0, 120)}`);
+  }
+
+  if (!j.ok) throw new Error(j.error);
+  return j.url as string;
+}
   async function submit() {
     setMsg("送信中…");
     try {
