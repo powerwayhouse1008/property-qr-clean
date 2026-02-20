@@ -116,7 +116,21 @@ export default function InquiryPage() {
       const j = await r.json();
       if (!j.ok) return setMsg("❌ " + j.error);
 
-      setMsg("✅ 送信完了しました。ありがとうございました。");
+            const notify = j?.notify as { teamsOk?: boolean; managerMailOk?: boolean; customerMailOk?: boolean } | undefined;
+      const failed: string[] = [];
+      if (notify) {
+        if (!notify.teamsOk) failed.push("Teams");
+        if (!notify.managerMailOk) failed.push("担当者メール");
+        if (!notify.customerMailOk) failed.push("お客様メール");
+      }
+
+      if (failed.length > 0) {
+        const details = typeof j?.notifyErrors === "object" ? JSON.stringify(j.notifyErrors) : "";
+        setMsg(`⚠️ 送信は完了しましたが、通知に失敗しました: ${failed.join(" / ")}
+${details}`);
+      } else {
+        setMsg("✅ 送信完了しました。ありがとうございました。");
+      }
       setForm({
         company_name: "",
         company_phone: "",
@@ -239,7 +253,7 @@ export default function InquiryPage() {
   const msgStyle: React.CSSProperties = {
     marginTop: 12,
     fontWeight: 900,
-    color: msg.startsWith("✅") ? "#16a34a" : msg.startsWith("❌") ? "#dc2626" : "#0f172a",
+       color: msg.startsWith("✅") ? "#16a34a" : msg.startsWith("❌") ? "#dc2626" : msg.startsWith("⚠️") ? "#d97706" : "#0f172a",
     whiteSpace: "pre-wrap",
   };
 
