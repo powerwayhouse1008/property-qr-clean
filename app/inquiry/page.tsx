@@ -7,6 +7,23 @@ type InquiryType = "viewing" | "purchase" | "other";
 // ✅ giới hạn để tránh Vercel 413 (Request Entity Too Large)
 const MAX_UPLOAD_MB = 4;
 const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
+function formatInquiryError(raw: unknown) {
+  if (!raw) return "送信に失敗しました。入力内容をご確認ください。";
+
+  if (typeof raw === "string") {
+    if (raw.includes("Invalid email") || raw.includes("person_gmail")) return "メールアドレスの形式が正しくありません。";
+    if (raw.includes("visit_datetime required")) return "内見日時を入力してください。";
+    if (raw.includes("purchase file required")) return "購入資料ファイルをアップロードしてください。";
+    return raw;
+  }
+
+  if (Array.isArray(raw)) {
+    const hasMailError = raw.some((x: any) => String(x?.path?.[0] ?? "") === "person_gmail");
+    if (hasMailError) return "メールアドレスの形式が正しくありません。";
+  }
+
+  return "送信に失敗しました。入力内容をご確認ください。";
+}
 
 export default function InquiryPage() {
   const [p, setP] = useState<any>(null);
@@ -47,7 +64,7 @@ export default function InquiryPage() {
       if (!property_id) return;
       const r = await fetch(`/api/property?property_id=${property_id}`, { cache: "no-store" });
       const j = await r.json();
-      if (!j.ok) return setMsg("❌ " + j.error);
+       if (!j.ok) return setMsg("❌ " + formatInquiryError(j.error));
       setP(j.property);
     })();
   }, [property_id]);
@@ -114,7 +131,7 @@ export default function InquiryPage() {
       });
 
       const j = await r.json();
-      if (!j.ok) return setMsg("❌ " + j.error);
+      if (!j.ok) return setMsg("❌ " + formatInquiryError(j.error));
 
             const notify = j?.notify as { teamsOk?: boolean; managerMailOk?: boolean; customerMailOk?: boolean } | undefined;
       const failed: string[] = [];
@@ -143,7 +160,7 @@ ${details}`);
       setBusinessCard(null);
       setPurchaseFile(null);
     } catch (e: any) {
-      setMsg("❌ " + (e?.message ?? String(e)));
+          setMsg("❌ " + formatInquiryError(e?.message ?? String(e)));
     }
   }
 
