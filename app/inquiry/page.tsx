@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 
 type InquiryType = "viewing" | "purchase" | "other";
 
+// ✅ giới hạn để tránh Vercel 413 (Request Entity Too Large)
+const MAX_UPLOAD_MB = 4;
+const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
+
 export default function InquiryPage() {
   const [p, setP] = useState<any>(null);
   const [msg, setMsg] = useState("");
@@ -13,10 +17,7 @@ export default function InquiryPage() {
   const [purchaseFile, setPurchaseFile] = useState<File | null>(null);
 
   const sp = useMemo(
-    () =>
-      typeof window !== "undefined"
-        ? new URLSearchParams(window.location.search)
-        : null,
+    () => (typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null),
     []
   );
   const property_id = sp?.get("property_id") || "";
@@ -32,10 +33,19 @@ export default function InquiryPage() {
     other_text: "",
   });
 
+  // ✅ responsive an toàn (không dùng window.innerWidth trực tiếp trong render)
+  const [isNarrow, setIsNarrow] = useState(false);
+  useEffect(() => {
+    const onResize = () => setIsNarrow(window.innerWidth < 760);
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   useEffect(() => {
     (async () => {
       if (!property_id) return;
-      const r = await fetch(`/api/property?property_id=${property_id}`);
+      const r = await fetch(`/api/property?property_id=${property_id}`, { cache: "no-store" });
       const j = await r.json();
       if (!j.ok) return setMsg("❌ " + j.error);
       setP(j.property);
@@ -43,56 +53,46 @@ export default function InquiryPage() {
   }, [property_id]);
 
   async function uploadOne(file: File) {
-  // ✅ chặn trước để khỏi dính 413 (Request Entity Too Large)
-  if (file.size > MAX_UPLOAD_BYTES) {
-    throw new Error(`ファイル容量が大きすぎます（最大 ${MAX_UPLOAD_MB}MB）`);
+    // ✅ chặn trước để khỏi dính 413
+    if (file.size > MAX_UPLOAD_BYTES) {
+      throw new Error(`ファイル容量が大きすぎます（最大 ${MAX_UPLOAD_MB}MB）`);
+    }
+
+    const fd = new FormData();
+    fd.append("file", file);
+
+    const r = await fetch("/api/upload", { method: "POST", body: fd });
+
+    // ✅ Vercel 413 có thể trả text/html => không parse json được
+    const text = await r.text();
+    let j: any;
+    try {
+      j = JSON.parse(text);
+    } catch {
+      throw new Error(`Upload failed (${r.status}): ${text.slice(0, 120)}`);
+    }
+
+    if (!j.ok) throw new Error(j.error);
+    return j.url as string;
   }
 
-  const fd = new FormData();
-  fd.append("file", file);
-
-  const r = await fetch("/api/upload", { method: "POST", body: fd });
-
-  // ✅ Vercel 413 trả về text/html → không parse json được
-  const text = await r.text();
-  let j: any;
-  try {
-    j = JSON.parse(text);
-  } catch {
-    // ví dụ: "Request Entity Too Large"
-    throw new Error(`Upload failed (${r.status}): ${text.slice(0, 120)}`);
-  }
-
-  if (!j.ok) throw new Error(j.error);
-  return j.url as string;
-}
   async function submit() {
     setMsg("送信中…");
     try {
       if (!property_id) throw new Error("property_id is missing");
 
-      if (
-        !form.company_name ||
-        !form.company_phone ||
-        !form.person_name ||
-        !form.person_mobile ||
-        !form.person_gmail
-      ) {
+      if (!form.company_name || !form.company_phone || !form.person_name || !form.person_mobile || !form.person_gmail) {
         throw new Error("必須項目を入力してください。");
       }
       if (!businessCard) throw new Error("名刺ファイルは必須です。");
 
-      if (type === "viewing" && !form.visit_datetime)
-        throw new Error("内見日時を選択してください。");
-      if (type === "purchase" && !purchaseFile)
-        throw new Error("購入資料ファイルをアップロードしてください。");
+      if (type === "viewing" && !form.visit_datetime) throw new Error("内見日時を選択してください。");
+      if (type === "purchase" && !purchaseFile) throw new Error("購入資料ファイルをアップロードしてください。");
 
       const business_card_url = await uploadOne(businessCard);
       const purchase_file_url = purchaseFile ? await uploadOne(purchaseFile) : "";
 
-      const visitISO = form.visit_datetime
-        ? new Date(form.visit_datetime).toISOString()
-        : "";
+      const visitISO = form.visit_datetime ? new Date(form.visit_datetime).toISOString() : "";
 
       const r = await fetch("/api/inquiry", {
         method: "POST",
@@ -145,10 +145,7 @@ export default function InquiryPage() {
       "linear-gradient(135deg, #eef2ff 0%, #f8fafc 45%, #ecfeff 100%)",
   };
 
-  const shell: React.CSSProperties = {
-    maxWidth: 980,
-    margin: "0 auto",
-  };
+  const shell: React.CSSProperties = { maxWidth: 980, margin: "0 auto" };
 
   const glass: React.CSSProperties = {
     background: "rgba(255,255,255,0.72)",
@@ -159,19 +156,13 @@ export default function InquiryPage() {
     backdropFilter: "blur(10px)",
   };
 
-  const headerRow: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 12,
-  };
+  const headerRow: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, marginBottom: 12 };
 
   const logo: React.CSSProperties = {
     width: 44,
     height: 44,
     borderRadius: 14,
-    background:
-      "linear-gradient(135deg, rgba(59,130,246,0.95), rgba(34,211,238,0.85))",
+    background: "linear-gradient(135deg, rgba(59,130,246,0.95), rgba(34,211,238,0.85))",
     display: "grid",
     placeItems: "center",
     color: "#fff",
@@ -181,20 +172,8 @@ export default function InquiryPage() {
     flex: "0 0 auto",
   };
 
-  const title: React.CSSProperties = {
-    fontSize: 24,
-    fontWeight: 1000 as any,
-    margin: 0,
-    lineHeight: 1.15,
-    color: "#0f172a",
-  };
-
-  const subtitle: React.CSSProperties = {
-    marginTop: 4,
-    fontSize: 13,
-    color: "#475569",
-    lineHeight: 1.4,
-  };
+  const title: React.CSSProperties = { fontSize: 24, fontWeight: 900, margin: 0, lineHeight: 1.15, color: "#0f172a" };
+  const subtitle: React.CSSProperties = { marginTop: 4, fontSize: 13, color: "#475569", lineHeight: 1.4 };
 
   const infoCard: React.CSSProperties = {
     marginTop: 10,
@@ -212,16 +191,9 @@ export default function InquiryPage() {
     background: "rgba(255,255,255,0.60)",
   };
 
-  const sectionTitle: React.CSSProperties = {
-    fontWeight: 900,
-    marginBottom: 10,
-    color: "#0f172a",
-  };
+  const sectionTitle: React.CSSProperties = { fontWeight: 900, marginBottom: 10, color: "#0f172a" };
 
-  const radioWrap: React.CSSProperties = {
-    display: "grid",
-    gap: 8,
-  };
+  const radioWrap: React.CSSProperties = { display: "grid", gap: 8 };
 
   const radioRow: React.CSSProperties = {
     display: "flex",
@@ -233,26 +205,10 @@ export default function InquiryPage() {
     background: "rgba(255,255,255,0.70)",
   };
 
-  const grid: React.CSSProperties = {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 12,
-    marginTop: 14,
-  };
+  const grid: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 };
+  const grid1: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr", gap: 12, marginTop: 12 };
 
-  const grid1: React.CSSProperties = {
-    display: "grid",
-    gridTemplateColumns: "1fr",
-    gap: 12,
-    marginTop: 12,
-  };
-
-  const label: React.CSSProperties = {
-    fontWeight: 900,
-    color: "#0f172a",
-    marginBottom: 6,
-    fontSize: 13,
-  };
+  const label: React.CSSProperties = { fontWeight: 900, color: "#0f172a", marginBottom: 6, fontSize: 13 };
 
   const inp: React.CSSProperties = {
     width: "100%",
@@ -264,21 +220,16 @@ export default function InquiryPage() {
     outline: "none",
   };
 
-  const hint: React.CSSProperties = {
-    marginTop: 6,
-    fontSize: 12,
-    color: "#64748b",
-  };
+  const hint: React.CSSProperties = { marginTop: 6, fontSize: 12, color: "#64748b" };
 
   const button: React.CSSProperties = {
     marginTop: 14,
     padding: "13px 14px",
     borderRadius: 16,
     border: 0,
-    background:
-      "linear-gradient(135deg, rgba(59,130,246,0.95), rgba(34,211,238,0.90))",
+    background: "linear-gradient(135deg, rgba(59,130,246,0.95), rgba(34,211,238,0.90))",
     color: "#fff",
-    fontWeight: 1000 as any,
+    fontWeight: 900,
     cursor: "pointer",
     width: "100%",
     boxShadow: "0 14px 30px rgba(59,130,246,0.25)",
@@ -292,11 +243,6 @@ export default function InquiryPage() {
     whiteSpace: "pre-wrap",
   };
 
-  // responsive
-  const isNarrow =
-    typeof window !== "undefined" ? window.innerWidth < 760 : false;
-
-  // ===== No property_id =====
   if (!property_id) {
     return (
       <div style={page}>
@@ -310,9 +256,7 @@ export default function InquiryPage() {
               </div>
             </div>
             <div style={infoCard}>
-              <div style={{ color: "#dc2626", fontWeight: 900 }}>
-                ❌ property_id がありません（QRリンクが不正）
-              </div>
+              <div style={{ color: "#dc2626", fontWeight: 900 }}>❌ property_id がありません（QRリンクが不正）</div>
             </div>
           </div>
         </div>
@@ -329,16 +273,14 @@ export default function InquiryPage() {
             <div style={logo}>PH</div>
             <div style={{ flex: 1 }}>
               <h2 style={title}>物件お問い合わせフォーム</h2>
-              <div style={subtitle}>
-                POWERWAY HOUSE / お問い合わせ内容をご入力ください
-              </div>
+              <div style={subtitle}>POWERWAY HOUSE / お問い合わせ内容をご入力ください</div>
             </div>
           </div>
 
-          {/* Property summary (NO view_method here) */}
+          {/* Property summary */}
           {p && (
             <div style={infoCard}>
-              <div style={{ fontWeight: 1000 as any, color: "#0f172a" }}>
+              <div style={{ fontWeight: 900, color: "#0f172a" }}>
                 {p.property_code} / {p.building_name}
               </div>
               <div style={{ marginTop: 6, color: "#475569", lineHeight: 1.55 }}>
@@ -355,118 +297,76 @@ export default function InquiryPage() {
             <div style={sectionTitle}>お問い合わせ種別（任意の分岐）</div>
             <div style={radioWrap}>
               <label style={radioRow}>
-                <input
-                  type="radio"
-                  name="type"
-                  checked={type === "viewing"}
-                  onChange={() => setType("viewing")}
-                />
+                <input type="radio" name="type" checked={type === "viewing"} onChange={() => setType("viewing")} />
                 <div>
                   <div style={{ fontWeight: 900 }}>内見</div>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>
-                    内見日時を選択して送信
-                  </div>
+                  <div style={{ fontSize: 12, color: "#64748b" }}>内見日時を選択して送信</div>
                 </div>
               </label>
 
               <label style={radioRow}>
-                <input
-                  type="radio"
-                  name="type"
-                  checked={type === "purchase"}
-                  onChange={() => setType("purchase")}
-                />
+                <input type="radio" name="type" checked={type === "purchase"} onChange={() => setType("purchase")} />
                 <div>
                   <div style={{ fontWeight: 900 }}>購入</div>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>
-                    資料ファイルを添付
-                  </div>
+                  <div style={{ fontSize: 12, color: "#64748b" }}>資料ファイルを添付</div>
                 </div>
               </label>
 
               <label style={radioRow}>
-                <input
-                  type="radio"
-                  name="type"
-                  checked={type === "other"}
-                  onChange={() => setType("other")}
-                />
+                <input type="radio" name="type" checked={type === "other"} onChange={() => setType("other")} />
                 <div>
                   <div style={{ fontWeight: 900 }}>その他</div>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>
-                    内容を入力して送信
-                  </div>
+                  <div style={{ fontSize: 12, color: "#64748b" }}>内容を入力して送信</div>
                 </div>
               </label>
             </div>
           </div>
 
-          {/* Show view_method ONLY when viewing */}
-          
+          {/* ✅ 内見方法: chỉ hiển thị khi type === viewing */}
+          {type === "viewing" && p?.view_method && (
+            <div style={section}>
+              <div style={sectionTitle}>内見方法</div>
+              <div style={{ color: "#0f172a", fontWeight: 700 }}>{p.view_method}</div>
+              <div style={hint}>※ 内見をご希望の場合のみ表示されます。内見日時を選択して送信してください。</div>
+            </div>
+          )}
 
           {/* Form inputs */}
           <div style={section}>
             <div style={sectionTitle}>お客様情報</div>
 
-            <div
-              style={
-                isNarrow
-                  ? grid1
-                  : grid
-              }
-            >
+            <div style={isNarrow ? grid1 : grid}>
               <div>
                 <div style={label}>会社名（必須）</div>
-                <input
-                  style={inp}
-                  value={form.company_name}
-                  onChange={(e) =>
-                    setForm({ ...form, company_name: e.target.value })
-                  }
-                />
+                <input style={inp} value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} />
               </div>
+
               <div>
                 <div style={label}>会社TEL（必須）</div>
-                <input
-                  style={inp}
-                  value={form.company_phone}
-                  onChange={(e) =>
-                    setForm({ ...form, company_phone: e.target.value })
-                  }
-                />
+                <input style={inp} value={form.company_phone} onChange={(e) => setForm({ ...form, company_phone: e.target.value })} />
               </div>
+
               <div>
                 <div style={label}>担当者名（必須）</div>
-                <input
-                  style={inp}
-                  value={form.person_name}
-                  onChange={(e) =>
-                    setForm({ ...form, person_name: e.target.value })
-                  }
-                />
+                <input style={inp} value={form.person_name} onChange={(e) => setForm({ ...form, person_name: e.target.value })} />
               </div>
+
               <div>
                 <div style={label}>携帯（必須）</div>
-                <input
-                  style={inp}
-                  value={form.person_mobile}
-                  onChange={(e) =>
-                    setForm({ ...form, person_mobile: e.target.value })
-                  }
-                />
+                <input style={inp} value={form.person_mobile} onChange={(e) => setForm({ ...form, person_mobile: e.target.value })} />
               </div>
+
               <div>
                 <div style={label}>Gmail（必須）</div>
                 <input
                   style={inp}
                   type="email"
                   value={form.person_gmail}
-                  onChange={(e) =>
-                    setForm({ ...form, person_gmail: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, person_gmail: e.target.value })}
                 />
                 <div style={hint}>※ 確認メールを送信します</div>
               </div>
+
               <div>
                 <div style={label}>名刺（必須：PDF/JPG/PNG）</div>
                 <input
@@ -475,6 +375,7 @@ export default function InquiryPage() {
                   accept="application/pdf,image/jpeg,image/png"
                   onChange={(e) => setBusinessCard(e.target.files?.[0] || null)}
                 />
+                <div style={hint}>※ 最大 {MAX_UPLOAD_MB}MB</div>
               </div>
             </div>
 
@@ -482,14 +383,7 @@ export default function InquiryPage() {
             {type === "viewing" && (
               <div style={{ marginTop: 12 }}>
                 <div style={label}>内見日時（必須）</div>
-                <input
-                  style={inp}
-                  type="datetime-local"
-                  value={form.visit_datetime}
-                  onChange={(e) =>
-                    setForm({ ...form, visit_datetime: e.target.value })
-                  }
-                />
+                <input style={inp} type="datetime-local" value={form.visit_datetime} onChange={(e) => setForm({ ...form, visit_datetime: e.target.value })} />
               </div>
             )}
 
@@ -503,6 +397,7 @@ export default function InquiryPage() {
                   accept="application/pdf,image/jpeg,image/png"
                   onChange={(e) => setPurchaseFile(e.target.files?.[0] || null)}
                 />
+                <div style={hint}>※ 最大 {MAX_UPLOAD_MB}MB</div>
               </div>
             )}
 
@@ -513,9 +408,7 @@ export default function InquiryPage() {
                 <textarea
                   style={{ ...inp, minHeight: 120, resize: "vertical" }}
                   value={form.other_text}
-                  onChange={(e) =>
-                    setForm({ ...form, other_text: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, other_text: e.target.value })}
                   placeholder="ご要望・質問など"
                 />
               </div>
