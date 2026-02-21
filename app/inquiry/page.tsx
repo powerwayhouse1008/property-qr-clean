@@ -177,17 +177,15 @@ export default function InquiryPage() {
   const headerRow: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, marginBottom: 12 };
 
   const logo: React.CSSProperties = {
-    width: 44,
-    height: 44,
+    width: 52,
+    height: 52,
     borderRadius: 14,
-    background: "linear-gradient(135deg, rgba(59,130,246,0.95), rgba(34,211,238,0.85))",
-    display: "grid",
-    placeItems: "center",
-    color: "#fff",
-    fontWeight: 900,
-    letterSpacing: 0.5,
+    
     boxShadow: "0 12px 30px rgba(59,130,246,0.25)",
     flex: "0 0 auto",
+    objectFit: "cover",
+    border: "1px solid rgba(148,163,184,0.3)",
+    background: "#fff",
   };
 
   const title: React.CSSProperties = { fontSize: 24, fontWeight: 900, margin: 0, lineHeight: 1.15, color: "#0f172a" };
@@ -267,7 +265,7 @@ export default function InquiryPage() {
         <div style={shell}>
           <div style={glass}>
             <div style={headerRow}>
-              <div style={logo}>PH</div>
+               <img src="/powerway-house-logo.svg" alt="POWERWAY HOUSE" style={logo} />
               <div>
                 <h2 style={title}>物件お問い合わせ</h2>
                 <div style={subtitle}>POWERWAY HOUSE</div>
@@ -288,7 +286,7 @@ export default function InquiryPage() {
         <div style={glass}>
           {/* Header */}
           <div style={headerRow}>
-            <div style={logo}>PH</div>
+             <img src="/powerway-house-logo.svg" alt="POWERWAY HOUSE" style={logo} />
             <div style={{ flex: 1 }}>
               <h2 style={title}>物件お問い合わせフォーム</h2>
               <div style={subtitle}>POWERWAY HOUSE / お問い合わせ内容をご入力ください</div>
