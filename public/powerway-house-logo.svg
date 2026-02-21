@@ -1,16 +1,10 @@
-+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-+  <defs>
-+    <linearGradient id="g" x1="32" y1="32" x2="480" y2="480" gradientUnits="userSpaceOnUse">
-+      <stop stop-color="#2A9FE8"/>
-+      <stop offset="1" stop-color="#63D4FF"/>
-+    </linearGradient>
-+  </defs>
-+  <rect x="20" y="20" width="472" height="472" rx="72" fill="url(#g)"/>
-+  <circle cx="360" cy="180" r="112" fill="#9EE7FF" fill-opacity="0.45"/>
-+  <circle cx="180" cy="220" r="92" fill="#B8F3D8" fill-opacity="0.6"/>
-+  <path d="M170 300h180c17 0 31 14 31 31s-14 31-31 31H214c-8 0-15-3-21-9l-45-45h22z" fill="#F8FCFF" stroke="#2D77B2" stroke-width="8"/>
-+  <path d="M249 165l78 70v84h-156v-84l78-70z" fill="#F8FCFF" stroke="#2D77B2" stroke-width="8"/>
-+  <path d="M221 310v-52h56v52" stroke="#2D77B2" stroke-width="8"/>
-+  <text x="256" y="420" text-anchor="middle" font-size="56" font-family="Arial, sans-serif" font-weight="800" fill="white">POWERWAY</text>
-+</svg>
- 
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="POWERWAY HOUSE logo">
+  <rect x="16" y="16" width="480" height="480" rx="72" fill="#2f9ae5" />
+  <circle cx="164" cy="192" r="86" fill="#b7f2da" fill-opacity="0.75" />
+  <circle cx="342" cy="210" r="124" fill="#9fdfff" fill-opacity="0.45" />
+  <rect x="150" y="278" width="216" height="64" rx="32" fill="#ffffff" stroke="#2d77b2" stroke-width="8" />
+  <path d="M196 266v-44l60-54 60 54v44" fill="#ffffff" stroke="#2d77b2" stroke-width="8" stroke-linejoin="round" />
+  <rect x="236" y="236" width="40" height="46" fill="#ffffff" stroke="#2d77b2" stroke-width="8" />
+  <text x="256" y="418" text-anchor="middle" font-size="56" font-family="Arial, Helvetica, sans-serif" font-weight="800" fill="#ffffff">POWERWAY</text>
+</svg>
