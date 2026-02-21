@@ -4,6 +4,10 @@ import { Resend } from "resend";
 import { supabaseAdmin } from "@/lib/supabase";
 import { InquirySchema } from "@/lib/validators";
 import { ZodError } from "zod";
+
+function isLikelyTeamsWebhookUrl(url: string) {
+  return /^https:\/\//.test(url) && /webhook|logic\.azure|powerautomate|office\.com/i.test(url);
+}
 async function postTeams(message: string) {
   const url = process.env.TEAMS_WEBHOOK_URL;
   if (!url) return;
@@ -55,14 +59,14 @@ export async function POST(req: Request) {
 
     const managerName = prop.manager_name ?? "担当者不明";
     const managerEmail = prop.manager_email ?? "-";
-    const status_at_submit = prop.status ?? null;
-
+    const statusAtSubmit = prop.status ?? null;
+    
     // 4) Insert inquiry
     const { error: ie } = await supabaseAdmin.from("inquiries").insert([
       {
         property_id: body.property_id,
         inquiry_type: body.inquiry_type,
-          visit_datetime: visitDatetime,
+        visit_datetime: visitDatetime,
 
         company_name: body.company_name,
         company_phone: body.company_phone,
@@ -75,7 +79,7 @@ export async function POST(req: Request) {
         business_card_url: body.business_card_url ?? null,
         purchase_file_url: purchaseFileUrl,
 
-        status_at_submit,
+        status_at_submit: statusAtSubmit,
         created_at: new Date().toISOString(),
       },
     ]);
@@ -93,7 +97,13 @@ export async function POST(req: Request) {
 ステータス: ${prop.status ?? "-"}
 
 種別: ${body.inquiry_type}
-${isViewing ? `内見日時: ${visitDatetime ?? "-"}\n` : ""}${isPurchase ? `購入資料: ${purchaseFileUrl ?? "-"}\n` : ""}名刺: ${body.business_card_url ?? "-"}
+${
+  isViewing
+    ? `内見方法: ${prop.view_method ?? "-"}
+内見日時: ${visitDatetime ?? "-"}
+`
+    : ""
+}${isPurchase ? `購入資料: ${purchaseFileUrl ?? "-"}\n` : ""}名刺: ${body.business_card_url ?? "-"}
 その他: ${body.other_text ?? "-"}
 
 会社名: ${body.company_name}
@@ -128,30 +138,34 @@ ${
     let teamsOk = false;
     let managerMailOk = false;
     let customerMailOk = false;
-  const notifyErrors: Record<string, string> = {};
+    const notifyErrors: Record<string, string> = {};
     const toErrMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
     // Teams
     try {
-     if (!process.env.TEAMS_WEBHOOK_URL) {
+       const teamsWebhookUrl = (process.env.TEAMS_WEBHOOK_URL ?? "").trim();
+      if (!teamsWebhookUrl) {
         notifyErrors.teams = "TEAMS_WEBHOOK_URL is missing";
+         } else if (!isLikelyTeamsWebhookUrl(teamsWebhookUrl)) {
+        notifyErrors.teams = "TEAMS_WEBHOOK_URL is not a valid incoming webhook URL";
       } else {
         await postTeams(msgInternal);
         teamsOk = true;
       }
     } catch (e) {
+        notifyErrors.teams = toErrMsg(e);
       console.error("Teams send failed:", e);
     }
 
     // Mail to manager (if exists)
     try {
-       const managerTo = (prop.manager_email ?? "").trim();
+        const managerTo = (prop.manager_email ?? "").trim();
       if (!managerTo) {
         notifyErrors.managerMail = "manager_email is empty on this property";
       } else {
         await resend.emails.send({
           from,
-           to: managerTo,
+          to: managerTo,
           subject: `【Inquiry】${prop.property_code ?? ""} ${prop.building_name ?? ""} (${prop.status ?? ""})`,
           text: msgInternal,
         });
@@ -172,7 +186,7 @@ ${
       });
       customerMailOk = true;
     } catch (e) {
-       notifyErrors.customerMail = toErrMsg(e);
+      notifyErrors.customerMail = toErrMsg(e);
       console.error("Customer email send failed:", e);
     }
 
@@ -181,18 +195,15 @@ ${
       ok: true,
       notify: { teamsOk, managerMailOk, customerMailOk },
       notifyErrors,
-      warning: Object.keys(notifyErrors).length
-        ? "Inquiry was saved, but some notifications failed."
-        : "",
+       warning: Object.keys(notifyErrors).length ? "Inquiry was saved, but some notifications failed." : "",
     });
-  } catch (e: any) { if (e instanceof ZodError) {
+ } catch (e: unknown) {
+    if (e instanceof ZodError) {
       const hasMailError = e.issues.some((issue) => issue.path[0] === "person_gmail");
-      const message = hasMailError
-        ? "メールアドレスの形式が正しくありません。"
-        : "入力内容をご確認ください。";
+           const message = hasMailError ? "メールアドレスの形式が正しくありません。" : "入力内容をご確認ください。";
       return NextResponse.json({ ok: false, error: message }, { status: 400 });
     }
 
-    return NextResponse.json({ ok: false, error: e?.message ?? String(e) }, { status: 400 });
+     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 400 });
   }
 }
