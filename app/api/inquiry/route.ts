@@ -90,31 +90,37 @@ export async function POST(req: Request) {
 
     // ===== 5) Build messages =====
     // Internal message (Teams + Manager): KHÔNG có 内見方法
-    const msgInternal = `【物件お問い合わせ】
+        const inquiryTypeLabel =
+      body.inquiry_type === "viewing" ? "viewing" : body.inquiry_type === "purchase" ? "purchase" : body.inquiry_type;
+    const attachmentUrls = [purchaseFileUrl, body.business_card_url?.trim() ? body.business_card_url : null].filter(
+      Boolean
+    ) as string[];
+    const attachmentText = attachmentUrls.length ? attachmentUrls.join("\n") : "-";
 
-物件: ${prop.property_code ?? "-"} / ${prop.building_name ?? "-"}
-住所: ${prop.address ?? "-"}
-ステータス: ${prop.status ?? "-"}
+    // Internal message (Teams + Manager email)
+    const msgInternal = `【物件お問い合わせ通知】
 
-種別: ${body.inquiry_type}
-${
-  isViewing
-    ? `内見方法: ${prop.view_method ?? "-"}
-内見日時: ${visitDatetime ?? "-"}
-`
-    : ""
-}${isPurchase ? `購入資料: ${purchaseFileUrl ?? "-"}\n` : ""}名刺: ${body.business_card_url ?? "-"}
-その他: ${body.other_text ?? "-"}
+■ 物件情報
+物件名：${prop.property_code ?? "-"} / ${prop.building_name ?? "-"}
+所在地：${prop.address ?? "-"}
+ステータス：${prop.status ?? "-"}
+種別：${inquiryTypeLabel}
+内見方法：${isViewing ? prop.view_method ?? "-" : "-"}
+内見日時：${isViewing ? visitDatetime ?? "-" : "-"}
 
-会社名: ${body.company_name}
-会社TEL: ${body.company_phone}
-担当者名: ${body.person_name}
-携帯: ${body.person_mobile}
-Gmail: ${body.person_gmail}
+■ お客様情報
+会社名：${body.company_name}
+お名前：${body.person_name}
+メールアドレス：${body.person_gmail}
 
-担当者: ${managerName}
-担当者メール: ${managerEmail}
-`;
+■ 担当者情報
+担当者名：${managerName}
+担当者メール：${managerEmail}
+
+■ 添付ファイル
+${attachmentText}
+
+お手数ですが、内容をご確認のうえご対応をお願いいたします。`;
 
     // Customer confirmation email: CHỈ khi viewing mới có 内見方法 + 内見日時
     const msgCustomer = `お問い合わせありがとうございます。受付完了しました。
