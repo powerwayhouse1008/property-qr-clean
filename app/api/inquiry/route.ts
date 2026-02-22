@@ -121,6 +121,8 @@ export async function POST(req: Request) {
 ${attachmentText}
 
 お手数ですが、内容をご確認のうえご対応をお願いいたします。`;
+ // Teams/Power Automate payload: wrap in code block to preserve line breaks reliably.
+    const msgInternalForTeams = `\`\`\`\r\n${msgInternal.replace(/\n/g, "\r\n")}\r\n\`\`\``;
 
     // Customer confirmation email: CHỈ khi viewing mới có 内見方法 + 内見日時
     const msgCustomer = `お問い合わせありがとうございます。受付完了しました。
@@ -155,7 +157,7 @@ ${
          } else if (!isLikelyTeamsWebhookUrl(teamsWebhookUrl)) {
         notifyErrors.teams = "TEAMS_WEBHOOK_URL is not a valid incoming webhook URL";
       } else {
-        await postTeams(msgInternal);
+        await postTeams(msgInternalForTeams);
         teamsOk = true;
       }
     } catch (e) {
