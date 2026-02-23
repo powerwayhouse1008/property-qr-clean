@@ -3,6 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 
 type InquiryType = "viewing" | "purchase" | "other";
+const statusLabelMap = {
+  available: "募集中",
+  sold: "成約",
+  rented: "賃貸中",
+} as const;
+
+function statusLabel(status: string | null | undefined) {
+  if (!status) return "-";
+  return statusLabelMap[status as keyof typeof statusLabelMap] ?? status;
+}
 
 // ✅ giới hạn để tránh Vercel 413 (Request Entity Too Large)
 const MAX_UPLOAD_MB = 4;
@@ -60,13 +70,27 @@ export default function InquiryPage() {
   }, []);
 
   useEffect(() => {
-    (async () => {
       if (!property_id) return;
+
+    let stop = false;
+
+    async function fetchProperty(silent = false) {
       const r = await fetch(`/api/property?property_id=${property_id}`, { cache: "no-store" });
       const j = await r.json();
-       if (!j.ok) return setMsg("❌ " + formatInquiryError(j.error));
-      setP(j.property);
-    })();
+       if (!j.ok) {
+        if (!silent) setMsg("❌ " + formatInquiryError(j.error));
+        return;
+      }
+      if (!stop) setP(j.property);
+    }
+
+    fetchProperty();
+    const timer = window.setInterval(() => fetchProperty(true), 5000);
+
+    return () => {
+      stop = true;
+      window.clearInterval(timer);
+    };
   }, [property_id]);
 
   async function uploadOne(file: File) {
@@ -302,7 +326,7 @@ export default function InquiryPage() {
               <div style={{ marginTop: 6, color: "#475569", lineHeight: 1.55 }}>
                 <div>住所: {p.address}</div>
                 <div>
-                  ステータス: <b>{p.status}</b>
+                  ステータス: <b>{statusLabel(p.status)}</b>
                 </div>
               </div>
             </div>
