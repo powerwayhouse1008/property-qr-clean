@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAnon } from "@/lib/supabase";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -8,5 +10,8 @@ export async function GET(req: Request) {
 
   const { data, error } = await supabaseAnon.from("properties").select("*").eq("id", id).single();
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
-  return NextResponse.json({ ok: true, property: data });
+  return NextResponse.json(
+    { ok: true, property: data },
+    { headers: { "Cache-Control": "no-store, max-age=0" } }
+  );
 }
