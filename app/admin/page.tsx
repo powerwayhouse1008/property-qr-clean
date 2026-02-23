@@ -30,6 +30,8 @@ export default function AdminPage() {
   const [props, setProps] = useState<Property[]>([]);
   const [msg, setMsg] = useState<string>("");
   const [created, setCreated] = useState<{ formUrl: string; code: string } | null>(null);
+   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const selectedCount = selectedIds.length;
 
   const [form, setForm] = useState({
     property_code: "",
@@ -46,7 +48,9 @@ export default function AdminPage() {
       const r = await fetch("/api/admin/properties", { cache: "no-store" });
       const j = await r.json();
       if (!j.ok) return setMsg("❌ " + j.error);
-      setProps(j.properties as Property[]);
+      const nextProps = j.properties as Property[];
+      setProps(nextProps);
+      setSelectedIds((prev) => prev.filter((id) => nextProps.some((item) => item.id === id)));
       setMsg(`✅ loaded ${j.properties.length} properties`);
     } catch (e: any) {
       setMsg("❌ " + (e?.message ?? String(e)));
@@ -85,7 +89,40 @@ export default function AdminPage() {
     if (!j.ok) return alert(j.error);
     await load();
   }
+function toggleOne(id: string, checked: boolean) {
+    setSelectedIds((prev) => {
+      if (checked) return prev.includes(id) ? prev : [...prev, id];
+      return prev.filter((x) => x !== id);
+    });
+  }
 
+  function toggleAll(checked: boolean) {
+    if (checked) {
+      setSelectedIds(props.map((p) => p.id));
+      return;
+    }
+    setSelectedIds([]);
+  }
+
+  async function deleteSelected() {
+    if (selectedIds.length === 0) return;
+    const ok = window.confirm(`選択した ${selectedIds.length} 件の物件データを削除します。関連する問い合わせデータも削除されます。よろしいですか？`);
+    if (!ok) return;
+
+    setMsg("...");
+    const r = await fetch("/api/admin/properties", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ property_ids: selectedIds }),
+    });
+
+    const j = await r.json();
+    if (!j.ok) return setMsg("❌ " + j.error);
+
+    setMsg(`✅ deleted ${j.deleted?.properties ?? selectedIds.length} properties / ${j.deleted?.inquiries ?? 0} inquiries`);
+    setSelectedIds([]);
+    await load();
+  }
   const card: React.CSSProperties = {
     background: "#fff",
     border: "1px solid #eee",
@@ -116,6 +153,7 @@ export default function AdminPage() {
     verticalAlign: "middle",
     whiteSpace: "nowrap",
   };
+  const allSelected = props.length > 0 && selectedIds.length === props.length;
 
   return (
     <div style={{ maxWidth: 1100, margin: "20px auto", padding: 14, fontFamily: "system-ui" }}>
@@ -222,24 +260,44 @@ export default function AdminPage() {
       <div style={card}>
         <h3 style={{ marginTop: 0 }}>物件一覧（ステータス変更）</h3>
 
-        <button
-          onClick={load}
-          style={{
-            padding: "8px 12px",
-            borderRadius: 12,
-            border: "1px solid #ddd",
-            background: "#f5f5f5",
-            cursor: "pointer",
-            fontWeight: 700,
-          }}
-        >
-          Reload
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button
+            onClick={load}
+            style={{
+              padding: "8px 12px",
+              borderRadius: 12,
+              border: "1px solid #ddd",
+              background: "#f5f5f5",
+              cursor: "pointer",
+              fontWeight: 700,
+            }}
+          >
+            Reload
+          </button>
+
+          <button
+            onClick={deleteSelected}
+            disabled={selectedCount === 0}
+            style={{
+              padding: "8px 12px",
+              borderRadius: 12,
+              border: "1px solid #ef4444",
+              background: selectedCount === 0 ? "#fee2e2" : "#ef4444",
+              color: selectedCount === 0 ? "#991b1b" : "#fff",
+              cursor: selectedCount === 0 ? "not-allowed" : "pointer",
+              fontWeight: 700,
+              opacity: selectedCount === 0 ? 0.6 : 1,
+            }}
+          >
+            選択した項目を削除 ({selectedCount})
+          </button>
+        </div>
 
         <div style={{ overflow: "auto", marginTop: 10 }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
+                <th style={th}><input type="checkbox" checked={allSelected} onChange={(e) => toggleAll(e.target.checked)} aria-label="select all" /></th>
                 <th style={th}>コード</th>
                 <th style={th}>建物</th>
                 <th style={th}>住所</th>
@@ -255,6 +313,14 @@ export default function AdminPage() {
             <tbody>
               {props.map((p) => (
                 <tr key={p.id}>
+                  <td style={td}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(p.id)}
+                      onChange={(e) => toggleOne(p.id, e.target.checked)}
+                      aria-label={`select-${p.property_code}`}
+                    />
+                  </td>
                   <td style={td}>{p.property_code}</td>
                   <td style={td}>{p.building_name}</td>
                   <td style={td}>{p.address}</td>
@@ -307,7 +373,7 @@ export default function AdminPage() {
 
               {props.length === 0 && (
                 <tr>
-                  <td style={td} colSpan={9}>
+                    <td style={td} colSpan={10}>
                     (no data)
                   </td>
                 </tr>
