@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode.react";
 
 type Status = "available" | "sold" | "rented";
+const statusLabelMap: Record<Status, string> = {
+  available: "募集中",
+  sold: "成約",
+  rented: "賃貸中",
+};
+
 
 type Property = {
   id: string;
@@ -152,9 +158,9 @@ export default function AdminPage() {
             value={form.status}
             onChange={(e) => setForm({ ...form, status: e.target.value as Status })}
           >
-            <option value="available">募集中 (available)</option>
-            <option value="sold">成約 (sold)</option>
-            <option value="rented">賃貸中 (rented)</option>
+            <option value="available">{statusLabelMap.available} (available)</option>
+            <option value="sold">{statusLabelMap.sold} (sold)</option>
+            <option value="rented">{statusLabelMap.rented} (rented)</option>
           </select>
 
           <input
@@ -238,7 +244,7 @@ export default function AdminPage() {
                 <th style={th}>建物</th>
                 <th style={th}>住所</th>
                 <th style={th}>内見方法</th>
-                <th style={th}>Status</th>
+                <th style={th}>ステータス</th>
                 <th style={th}>担当者メール</th>
                 <th style={th}>担当者</th>
                 <th style={th}>QR</th>
@@ -256,9 +262,9 @@ export default function AdminPage() {
 
                   <td style={td}>
                     <select value={p.status} onChange={(e) => updateStatus(p.id, e.target.value as Status)}>
-                      <option value="available">available</option>
-                      <option value="rented">rented</option>
-                      <option value="sold">sold</option>
+                       <option value="available">{statusLabelMap.available} (available)</option>
+                      <option value="rented">{statusLabelMap.rented} (rented)</option>
+                      <option value="sold">{statusLabelMap.sold} (sold)</option>
                     </select>
                   </td>
 
