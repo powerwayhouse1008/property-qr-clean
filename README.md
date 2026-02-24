@@ -61,6 +61,20 @@ Teams channel:
 - Copy URL → put into `TEAMS_WEBHOOK_URL`
 
 ---
+## 3.1) Gmail OAuth2 (if you do not use Resend)
+If `RESEND_API_KEY` is empty, the app sends mail via Gmail API using OAuth2 refresh token.
+
+Set these env vars:
+- `GMAIL_OAUTH_USER`
+- `GMAIL_OAUTH_CLIENT_ID`
+- `GMAIL_OAUTH_CLIENT_SECRET`
+- `GMAIL_OAUTH_REFRESH_TOKEN`
+
+Google Cloud OAuth screen (Web application) values:
+- **Authorized JavaScript origins**: your app origin (example `http://localhost:3000`, `https://your-app.vercel.app`)
+- **Authorized redirect URI**: use `https://developers.google.com/oauthplayground` to generate refresh token quickly
+
+Keep `MAIL_FROM` as your Gmail address (or `Name <your-gmail@gmail.com>`).
 
 ## 3) Local run
 Copy `.env.local.example` -> `.env.local` and fill.
