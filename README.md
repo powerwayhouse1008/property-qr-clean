@@ -70,11 +70,19 @@ Set these env vars:
 - `GMAIL_OAUTH_CLIENT_SECRET`
 - `GMAIL_OAUTH_REFRESH_TOKEN`
 
+Backward-compatible aliases are also supported:
+- `GMAIL_CLIENT_ID`
+- `GMAIL_CLIENT_SECRET`
+- `GMAIL_REFRESH_TOKEN`
+- `GMAIL_SENDER`
+
 Google Cloud OAuth screen (Web application) values:
 - **Authorized JavaScript origins**: your app origin (example `http://localhost:3000`, `https://your-app.vercel.app`)
 - **Authorized redirect URI**: use `https://developers.google.com/oauthplayground` to generate refresh token quickly
 
 Keep `MAIL_FROM` as your Gmail address (or `Name <your-gmail@gmail.com>`).
+
+If `RESEND_API_KEY` is set but Resend delivery fails, the app now automatically falls back to Gmail API when Gmail OAuth env vars are present.
 
 ## 3) Local run
 Copy `.env.local.example` -> `.env.local` and fill.
