@@ -6,10 +6,28 @@ type SendMailInput = {
   text: string;
 };
 
-function getRequiredEnv(name: string) {
-  const value = process.env[name]?.trim();
-  if (!value) throw new Error(`Missing ${name}`);
+function readEnv(...names: string[]) {
+  for (const name of names) {
+    const value = process.env[name]?.trim();
+    if (value) return value;
+  }
+  return "";
+}
+
+function getRequiredEnv(...names: string[]) {
+  const value = readEnv(...names);
+  if (!value) {
+    throw new Error(`Missing ${names.join(" or ")}`);
+  }
   return value;
+}
+
+function hasGmailConfig() {
+  return Boolean(
+    readEnv("GMAIL_OAUTH_CLIENT_ID", "GMAIL_CLIENT_ID") &&
+      readEnv("GMAIL_OAUTH_CLIENT_SECRET", "GMAIL_CLIENT_SECRET") &&
+      readEnv("GMAIL_OAUTH_REFRESH_TOKEN", "GMAIL_REFRESH_TOKEN")
+  );
 }
 
 async function sendWithResend(input: SendMailInput) {
@@ -24,9 +42,9 @@ async function sendWithResend(input: SendMailInput) {
 
 async function getGoogleAccessToken() {
   const body = new URLSearchParams({
-    client_id: getRequiredEnv("GMAIL_OAUTH_CLIENT_ID"),
-    client_secret: getRequiredEnv("GMAIL_OAUTH_CLIENT_SECRET"),
-    refresh_token: getRequiredEnv("GMAIL_OAUTH_REFRESH_TOKEN"),
+    client_id: getRequiredEnv("GMAIL_OAUTH_CLIENT_ID", "GMAIL_CLIENT_ID"),
+    client_secret: getRequiredEnv("GMAIL_OAUTH_CLIENT_SECRET", "GMAIL_CLIENT_SECRET"),
+    refresh_token: getRequiredEnv("GMAIL_OAUTH_REFRESH_TOKEN", "GMAIL_REFRESH_TOKEN"),
     grant_type: "refresh_token",
   });
 
@@ -56,8 +74,8 @@ function toBase64UrlUtf8(input: string) {
 
 async function sendWithGmailApi(input: SendMailInput) {
   const accessToken = await getGoogleAccessToken();
-  const from = (process.env.MAIL_FROM ?? process.env.GMAIL_OAUTH_USER ?? "").trim();
-  if (!from) throw new Error("Missing MAIL_FROM or GMAIL_OAUTH_USER");
+  const from = readEnv("MAIL_FROM", "GMAIL_OAUTH_USER", "GMAIL_SENDER");
+  if (!from) throw new Error("Missing MAIL_FROM or GMAIL_OAUTH_USER or GMAIL_SENDER");
 
   const rawMessage = [
     `From: ${from}`,
@@ -84,9 +102,18 @@ async function sendWithGmailApi(input: SendMailInput) {
 }
 
 export async function sendMail(input: SendMailInput) {
-  if (process.env.RESEND_API_KEY?.trim()) {
-    await sendWithResend(input);
-    return;
+  const resendKey = readEnv("RESEND_API_KEY");
+
+  if (resendKey) {
+    try {
+      await sendWithResend(input);
+      return;
+    } catch (resendError) {
+      if (!hasGmailConfig()) {
+        throw resendError;
+      }
+      console.error("Resend send failed, fallback to Gmail API:", resendError);
+    }
   }
 
   await sendWithGmailApi(input);
