@@ -1,10 +1,9 @@
 // app/api/inquiry/route.ts
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
 import { supabaseAdmin } from "@/lib/supabase";
 import { InquirySchema } from "@/lib/validators";
 import { ZodError } from "zod";
-
+import { sendMail } from "@/lib/mailer";
 function isLikelyTeamsWebhookUrl(url: string) {
   return /^https:\/\//.test(url) && /webhook|logic\.azure|powerautomate|office\.com/i.test(url);
 }
@@ -26,27 +25,14 @@ async function postTeams(message: string) {
 
 export async function POST(req: Request) {
   try {
-    // 1) ENV checks
-    const RESEND_KEY = process.env.RESEND_API_KEY;
-    if (!RESEND_KEY) {
-      return NextResponse.json({ ok: false, error: "Missing RESEND_API_KEY" }, { status: 500 });
-    }
-
-    // IMPORTANT: MAIL_FROM nên là sender đã verify trong Resend
-    const from = process.env.MAIL_FROM;
-    if (!from) {
-      return NextResponse.json({ ok: false, error: "Missing MAIL_FROM (must be a verified sender in Resend)" }, { status: 500 });
-    }
-
-    const resend = new Resend(RESEND_KEY);
-
-    // 2) Validate body
+    
+    // 1) Validate body
     const body = InquirySchema.parse(await req.json());
     const isViewing = body.inquiry_type === "viewing";
     const isPurchase = body.inquiry_type === "purchase";
    const visitDatetime = body.visit_datetime?.trim() ? body.visit_datetime : null;
     const purchaseFileUrl = body.purchase_file_url?.trim() ? body.purchase_file_url : null;
-    // 3) Load property
+    // 2) Load property
     const { data: prop, error: pe } = await supabaseAdmin
       .from("properties")
       .select("*")
@@ -61,7 +47,7 @@ export async function POST(req: Request) {
     const managerEmail = prop.manager_email ?? "-";
     const statusAtSubmit = prop.status ?? null;
     
-    // 4) Insert inquiry
+    // 33) Insert inquiry
     const { error: ie } = await supabaseAdmin.from("inquiries").insert([
       {
         property_id: body.property_id,
@@ -88,7 +74,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: ie.message }, { status: 400 });
     }
 
-    // ===== 5) Build messages =====
+    // ===== 4) Build messages =====
     // Internal message (Teams + Manager): KHÔNG có 内見方法
         const inquiryTypeLabel =
       body.inquiry_type === "viewing" ? "viewing" : body.inquiry_type === "purchase" ? "purchase" : body.inquiry_type;
@@ -142,7 +128,7 @@ ${
 }
 `;
 
-    // ===== 6) Notify with debug flags =====
+    // ===== 5) Notify with debug flags =====
     let teamsOk = false;
     let managerMailOk = false;
     let customerMailOk = false;
@@ -171,8 +157,7 @@ ${
       if (!managerTo) {
         notifyErrors.managerMail = "manager_email is empty on this property";
       } else {
-        await resend.emails.send({
-          from,
+         await sendMail({
           to: managerTo,
           subject: `【Inquiry】${prop.property_code ?? ""} ${prop.building_name ?? ""} (${prop.status ?? ""})`,
           text: msgInternal,
@@ -186,8 +171,7 @@ ${
 
     // Mail to customer (always)
     try {
-      await resend.emails.send({
-        from,
+       await sendMail({
         to: body.person_gmail,
         subject: `受付完了：${prop.property_code ?? ""} ${prop.building_name ?? ""}`,
         text: msgCustomer,
