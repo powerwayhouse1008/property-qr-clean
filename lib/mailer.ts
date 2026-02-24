@@ -97,7 +97,12 @@ async function sendWithGmailApi(input: SendMailInput) {
 
   if (!r.ok) {
     const t = await r.text().catch(() => "");
-    throw new Error(`Gmail API send failed: ${r.status} ${t}`);
+      const hints = [
+      "Check OAuth client ID/secret/refresh token and ensure Gmail API is enabled in Google Cloud.",
+      "Refresh token must be created with Gmail send scope (https://www.googleapis.com/auth/gmail.send).",
+      `MAIL_FROM (${from}) should be the same Gmail account used to issue the refresh token or a verified Gmail Send-As alias.`,
+    ];
+    throw new Error(`Gmail API send failed: ${r.status} ${t} | Hints: ${hints.join(" ")}`);
   }
 }
 
