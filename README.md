@@ -81,6 +81,12 @@ Google Cloud OAuth screen (Web application) values:
 - **Authorized redirect URI**: use `https://developers.google.com/oauthplayground` to generate refresh token quickly
 
 Keep `MAIL_FROM` as your Gmail address (or `Name <your-gmail@gmail.com>`).
+### Gmail troubleshooting (saved inquiry but no email)
+- Check API response payload from `/api/inquiry`: `notifyErrors.managerMail` / `notifyErrors.customerMail` now include Gmail error details.
+- Make sure `MAIL_FROM` (or `GMAIL_SENDER`) matches the Gmail account that generated `GMAIL_OAUTH_REFRESH_TOKEN`.
+  - If you use a custom domain address like `info@your-domain.com`, add it as a verified **Send mail as** alias in that Gmail account first.
+- Regenerate refresh token with scope: `https://www.googleapis.com/auth/gmail.send`.
+- Confirm Gmail API is enabled in the same Google Cloud project as your OAuth client.
 
 If `RESEND_API_KEY` is set but Resend delivery fails, the app now automatically falls back to Gmail API when Gmail OAuth env vars are present.
 
