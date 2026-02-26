@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 type InquiryType = "viewing" | "purchase" | "other";
 const statusLabelMap = {
   available: "募集中",
+  pending: "申込有り",
   sold: "成約",
   rented: "賃貸中",
 } as const;
