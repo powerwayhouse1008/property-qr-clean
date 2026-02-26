@@ -7,6 +7,22 @@ import { sendMail } from "@/lib/mailer";
 function isLikelyTeamsWebhookUrl(url: string) {
   return /^https:\/\//.test(url) && /webhook|logic\.azure|powerautomate|office\.com/i.test(url);
 }
+function formatDateTimeJa(raw: string | null | undefined) {
+  if (!raw) return "-";
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
 async function postTeams(message: string) {
   const url = process.env.TEAMS_WEBHOOK_URL;
   if (!url) return;
@@ -32,6 +48,9 @@ export async function POST(req: Request) {
     const isPurchase = body.inquiry_type === "purchase";
    const visitDatetime = body.visit_datetime?.trim() ? body.visit_datetime : null;
     const purchaseFileUrl = body.purchase_file_url?.trim() ? body.purchase_file_url : null;
+    const submittedAtIso = new Date().toISOString();
+    const submittedAtJa = formatDateTimeJa(submittedAtIso);
+    const visitDatetimeJa = isViewing ? formatDateTimeJa(visitDatetime) : "-";
     // 2) Load property
     const { data: prop, error: pe } = await supabaseAdmin
       .from("properties")
@@ -66,7 +85,7 @@ export async function POST(req: Request) {
         purchase_file_url: purchaseFileUrl,
 
         status_at_submit: statusAtSubmit,
-        created_at: new Date().toISOString(),
+        created_at: submittedAtIso,
       },
     ]);
 
@@ -91,8 +110,9 @@ export async function POST(req: Request) {
 所在地：${prop.address ?? "-"}
 ステータス：${prop.status ?? "-"}
 種別：${inquiryTypeLabel}
+申込日時：${submittedAtJa}
 内見方法：${isViewing ? prop.view_method ?? "-" : "-"}
-内見日時：${isViewing ? visitDatetime ?? "-" : "-"}
+内見日時：${visitDatetimeJa}
 
 ■ お客様情報
 会社名：${body.company_name}
@@ -120,8 +140,9 @@ ${attachmentText}
 
 ${
   isViewing
-    ? `内見方法: ${prop.view_method ?? "-"}
-内見日時: ${visitDatetime ?? "-"}`
+     ? `申込日時: ${submittedAtJa}
+内見方法: ${prop.view_method ?? "-"}
+内見日時: ${visitDatetimeJa}`
     : isPurchase
     ? `購入資料: ${purchaseFileUrl ?? "-"}`
     : ""
