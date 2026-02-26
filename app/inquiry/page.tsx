@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 
 type InquiryType = "viewing" | "purchase" | "other";
+const VIEWING_START_HOUR = 8;
+const VIEWING_END_HOUR = 20;
+const VIEWING_MINUTE_STEP = 30;
 const statusLabelMap = {
   available: "募集中",
   pending: "申込有り",
@@ -14,7 +17,22 @@ function statusLabel(status: string | null | undefined) {
   if (!status) return "-";
   return statusLabelMap[status as keyof typeof statusLabelMap] ?? status;
 }
+function isValidViewingSlot(raw: string) {
+  if (!raw) return false;
 
+  const local = new Date(raw);
+  if (Number.isNaN(local.getTime())) return false;
+
+  const hours = local.getHours();
+  const minutes = local.getMinutes();
+  const isHalfHourSlot = minutes % VIEWING_MINUTE_STEP === 0;
+  const isWithinHourRange =
+    (hours > VIEWING_START_HOUR && hours < VIEWING_END_HOUR) ||
+    (hours === VIEWING_START_HOUR && isHalfHourSlot) ||
+    (hours === VIEWING_END_HOUR && minutes === 0);
+
+  return isHalfHourSlot && isWithinHourRange;
+}
 // ✅ giới hạn để tránh Vercel 413 (Request Entity Too Large)
 const MAX_UPLOAD_MB = 4;
 const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
@@ -129,6 +147,9 @@ export default function InquiryPage() {
       if (!businessCard) throw new Error("名刺ファイルは必須です。");
 
       if (type === "viewing" && !form.visit_datetime) throw new Error("内見日時を選択してください。");
+      if (type === "viewing" && !isValidViewingSlot(form.visit_datetime)) {
+        throw new Error("内見時間は08:00〜20:00の30分刻みで選択してください。");
+      }
       if (type === "purchase" && !purchaseFile) throw new Error("購入資料ファイルをアップロードしてください。");
 
       const business_card_url = await uploadOne(businessCard);
@@ -415,7 +436,14 @@ export default function InquiryPage() {
             {type === "viewing" && (
               <div style={{ marginTop: 12 }}>
                 <div style={label}>内見日時（必須）</div>
-                <input style={inp} type="datetime-local" value={form.visit_datetime} onChange={(e) => setForm({ ...form, visit_datetime: e.target.value })} />
+                  <input
+                  style={inp}
+                  type="datetime-local"
+                  step={VIEWING_MINUTE_STEP * 60}
+                  value={form.visit_datetime}
+                  onChange={(e) => setForm({ ...form, visit_datetime: e.target.value })}
+                />
+                <div style={hint}>※ 08:00〜20:00 / 30分刻みで選択してください</div>
               </div>
             )}
 
