@@ -7,6 +7,28 @@ import { sendMail } from "@/lib/mailer";
 function isLikelyTeamsWebhookUrl(url: string) {
   return /^https:\/\//.test(url) && /webhook|logic\.azure|powerautomate|office\.com/i.test(url);
 }
+const statusLabelMap: Record<string, string> = {
+  available: "募集中",
+  pending: "申込有り",
+  sold: "成約",
+  rented: "賃貸中",
+};
+
+const inquiryTypeLabelMap: Record<string, string> = {
+  viewing: "内見予約",
+  purchase: "購入相談",
+  other: "その他",
+};
+
+function toStatusLabel(status: string | null | undefined) {
+  if (!status) return "-";
+  return statusLabelMap[status] ?? status;
+}
+
+function toInquiryTypeLabel(kind: string | null | undefined) {
+  if (!kind) return "-";
+  return inquiryTypeLabelMap[kind] ?? kind;
+}
 function formatDateTimeJa(raw: string | null | undefined) {
   if (!raw) return "-";
   const date = new Date(raw);
@@ -65,6 +87,8 @@ export async function POST(req: Request) {
     const managerName = prop.manager_name ?? "担当者不明";
     const managerEmail = prop.manager_email ?? "-";
     const statusAtSubmit = prop.status ?? null;
+    const propertyStatusLabel = toStatusLabel(prop.status);
+    const inquiryTypeLabel = toInquiryTypeLabel(body.inquiry_type);
     
     // 33) Insert inquiry
     const { error: ie } = await supabaseAdmin.from("inquiries").insert([
@@ -95,8 +119,7 @@ export async function POST(req: Request) {
 
     // ===== 4) Build messages =====
     // Internal message (Teams + Manager): KHÔNG có 内見方法
-        const inquiryTypeLabel =
-      body.inquiry_type === "viewing" ? "viewing" : body.inquiry_type === "purchase" ? "purchase" : body.inquiry_type;
+        
     const attachmentUrls = [purchaseFileUrl, body.business_card_url?.trim() ? body.business_card_url : null].filter(
       Boolean
     ) as string[];
@@ -108,7 +131,7 @@ export async function POST(req: Request) {
 ■ 物件情報
 物件名：${prop.property_code ?? "-"} / ${prop.building_name ?? "-"}
 所在地：${prop.address ?? "-"}
-ステータス：${prop.status ?? "-"}
+状態：${propertyStatusLabel}
 種別：${inquiryTypeLabel}
 申込日時：${submittedAtJa}
 内見方法：${isViewing ? prop.view_method ?? "-" : "-"}
@@ -135,8 +158,8 @@ ${attachmentText}
 
 物件: ${prop.property_code ?? "-"} ${prop.building_name ?? "-"}
 住所: ${prop.address ?? "-"}
-ステータス: ${prop.status ?? "-"}
-種別: ${body.inquiry_type}
+状態: ${propertyStatusLabel}
+種別: ${inquiryTypeLabel}
 
 ${
   isViewing
@@ -180,7 +203,7 @@ ${
       } else {
          await sendMail({
           to: managerTo,
-          subject: `【Inquiry】${prop.property_code ?? ""} ${prop.building_name ?? ""} (${prop.status ?? ""})`,
+          subject: `【Inquiry】${prop.property_code ?? ""} ${prop.building_name ?? ""} (${propertyStatusLabel})`,
           text: msgInternal,
         });
         managerMailOk = true;
