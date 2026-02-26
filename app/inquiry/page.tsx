@@ -6,6 +6,11 @@ type InquiryType = "viewing" | "purchase" | "other";
 const VIEWING_START_HOUR = 8;
 const VIEWING_END_HOUR = 20;
 const VIEWING_MINUTE_STEP = 30;
+const HOUR_OPTIONS = Array.from(
+  { length: VIEWING_END_HOUR - VIEWING_START_HOUR + 1 },
+  (_, i) => String(VIEWING_START_HOUR + i).padStart(2, "0")
+);
+const MINUTE_OPTIONS = ["00", "30"] as const;
 const statusLabelMap = {
   available: "募集中",
   pending: "申込有り",
@@ -17,6 +22,25 @@ function statusLabel(status: string | null | undefined) {
   if (!status) return "-";
   return statusLabelMap[status as keyof typeof statusLabelMap] ?? status;
 }
+
+
+function formatDateTimePart(n: string | number) {
+  return String(n).padStart(2, "0");
+}
+
+function splitVisitDateTime(raw: string) {
+  if (!raw || !raw.includes("T")) return { date: "", hour: "", minute: "" };
+
+  const [date, time] = raw.split("T");
+  const [hour = "", minute = ""] = time.split(":");
+  return { date, hour: formatDateTimePart(hour), minute: formatDateTimePart(minute) };
+}
+
+function combineVisitDateTime(date: string, hour: string, minute: string) {
+  if (!date || !hour || !minute) return "";
+  return `${date}T${hour}:${minute}`;
+}
+
 function isValidViewingSlot(raw: string) {
   if (!raw) return false;
 
@@ -33,6 +57,7 @@ function isValidViewingSlot(raw: string) {
 
   return isHalfHourSlot && isWithinHourRange;
 }
+
 // ✅ giới hạn để tránh Vercel 413 (Request Entity Too Large)
 const MAX_UPLOAD_MB = 4;
 const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
@@ -78,6 +103,9 @@ export default function InquiryPage() {
     visit_datetime: "",
     other_text: "",
   });
+  const [visitDate, setVisitDate] = useState("");
+  const [visitHour, setVisitHour] = useState("");
+  const [visitMinute, setVisitMinute] = useState("");
 
   // ✅ responsive an toàn (không dùng window.innerWidth trực tiếp trong render)
   const [isNarrow, setIsNarrow] = useState(false);
@@ -87,6 +115,13 @@ export default function InquiryPage() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  useEffect(() => {
+    const parts = splitVisitDateTime(form.visit_datetime);
+    setVisitDate(parts.date);
+    setVisitHour(parts.hour);
+    setVisitMinute(parts.minute);
+  }, [form.visit_datetime]);
 
   useEffect(() => {
       if (!property_id) return;
@@ -134,6 +169,27 @@ export default function InquiryPage() {
 
     if (!j.ok) throw new Error(j.error);
     return j.url as string;
+  }
+
+  function onVisitDateChange(date: string) {
+    setVisitDate(date);
+    setForm((prev) => ({ ...prev, visit_datetime: combineVisitDateTime(date, visitHour, visitMinute) }));
+  }
+
+  function onVisitHourChange(hour: string) {
+    const normalizedMinute = hour === String(VIEWING_END_HOUR).padStart(2, "0") ? "00" : visitMinute;
+
+    setVisitHour(hour);
+    setVisitMinute(normalizedMinute);
+    setForm((prev) => ({
+      ...prev,
+      visit_datetime: combineVisitDateTime(visitDate, hour, normalizedMinute),
+    }));
+  }
+
+  function onVisitMinuteChange(minute: string) {
+    setVisitMinute(minute);
+    setForm((prev) => ({ ...prev, visit_datetime: combineVisitDateTime(visitDate, visitHour, minute) }));
   }
 
   async function submit() {
@@ -192,6 +248,9 @@ export default function InquiryPage() {
       });
       setBusinessCard(null);
       setPurchaseFile(null);
+      setVisitDate("");
+      setVisitHour("");
+      setVisitMinute("");
     } catch (e: any) {
           setMsg("❌ " + formatInquiryError(e?.message ?? String(e)));
     }
@@ -217,200 +276,7 @@ export default function InquiryPage() {
     borderRadius: 22,
     padding: 18,
     boxShadow: "0 18px 60px rgba(15,23,42,0.10)",
-    backdropFilter: "blur(10px)",
-  };
-
-  const headerRow: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, marginBottom: 12 };
-
-  const logo: React.CSSProperties = {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    
-    boxShadow: "0 12px 30px rgba(59,130,246,0.25)",
-    flex: "0 0 auto",
-    objectFit: "cover",
-    border: "1px solid rgba(148,163,184,0.3)",
-    background: "#fff",
-  };
-
-  const title: React.CSSProperties = { fontSize: 24, fontWeight: 900, margin: 0, lineHeight: 1.15, color: "#0f172a" };
-  const subtitle: React.CSSProperties = { marginTop: 4, fontSize: 13, color: "#475569", lineHeight: 1.4 };
-
-  const infoCard: React.CSSProperties = {
-    marginTop: 10,
-    padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(148,163,184,0.25)",
-    background: "rgba(255,255,255,0.65)",
-  };
-
-  const section: React.CSSProperties = {
-    marginTop: 14,
-    padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(148,163,184,0.22)",
-    background: "rgba(255,255,255,0.60)",
-  };
-
-  const sectionTitle: React.CSSProperties = { fontWeight: 900, marginBottom: 10, color: "#0f172a" };
-
-  const radioWrap: React.CSSProperties = { display: "grid", gap: 8 };
-
-  const radioRow: React.CSSProperties = {
-    display: "flex",
-    gap: 10,
-    alignItems: "center",
-    padding: "10px 12px",
-    borderRadius: 14,
-    border: "1px solid rgba(148,163,184,0.22)",
-    background: "rgba(255,255,255,0.70)",
-  };
-
-  const grid: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 };
-  const grid1: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr", gap: 12, marginTop: 12 };
-
-  const label: React.CSSProperties = { fontWeight: 900, color: "#0f172a", marginBottom: 6, fontSize: 13 };
-
-  const inp: React.CSSProperties = {
-    width: "100%",
-    padding: "11px 12px",
-    borderRadius: 14,
-    border: "1px solid rgba(148,163,184,0.35)",
-    background: "rgba(255,255,255,0.92)",
-    boxSizing: "border-box",
-    outline: "none",
-  };
-
-  const hint: React.CSSProperties = { marginTop: 6, fontSize: 12, color: "#64748b" };
-
-  const button: React.CSSProperties = {
-    marginTop: 14,
-    padding: "13px 14px",
-    borderRadius: 16,
-    border: 0,
-    background: "linear-gradient(135deg, rgba(59,130,246,0.95), rgba(34,211,238,0.90))",
-    color: "#fff",
-    fontWeight: 900,
-    cursor: "pointer",
-    width: "100%",
-    boxShadow: "0 14px 30px rgba(59,130,246,0.25)",
-    letterSpacing: 0.5,
-  };
-
-  const msgStyle: React.CSSProperties = {
-    marginTop: 12,
-    fontWeight: 900,
-       color: msg.startsWith("✅") ? "#16a34a" : msg.startsWith("❌") ? "#dc2626" : msg.startsWith("⚠️") ? "#d97706" : "#0f172a",
-    whiteSpace: "pre-wrap",
-  };
-
-  if (!property_id) {
-    return (
-      <div style={page}>
-        <div style={shell}>
-          <div style={glass}>
-            <div style={headerRow}>
-               <img src="/powerway-house-logo.svg" alt="POWERWAY HOUSE" style={logo} />
-              <div>
-                <h2 style={title}>物件お問い合わせ</h2>
-                <div style={subtitle}>POWERWAY HOUSE</div>
-              </div>
-            </div>
-            <div style={infoCard}>
-              <div style={{ color: "#dc2626", fontWeight: 900 }}>❌ property_id がありません（QRリンクが不正）</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={page}>
-      <div style={shell}>
-        <div style={glass}>
-          {/* Header */}
-          <div style={headerRow}>
-             <img src="/powerway-house-logo.svg" alt="POWERWAY HOUSE" style={logo} />
-            <div style={{ flex: 1 }}>
-              <h2 style={title}>物件お問い合わせフォーム</h2>
-              <div style={subtitle}>POWERWAY HOUSE / お問い合わせ内容をご入力ください</div>
-            </div>
-          </div>
-
-          {/* Property summary */}
-          {p && (
-            <div style={infoCard}>
-              <div style={{ fontWeight: 900, color: "#0f172a" }}>
-                {p.property_code} / {p.building_name}
-              </div>
-              <div style={{ marginTop: 6, color: "#475569", lineHeight: 1.55 }}>
-                <div>住所: {p.address}</div>
-                <div>
-                  ステータス: <b>{statusLabel(p.status)}</b>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Type */}
-          <div style={section}>
-            <div style={sectionTitle}>お問い合わせ種別（任意の分岐）</div>
-            <div style={radioWrap}>
-              <label style={radioRow}>
-                <input type="radio" name="type" checked={type === "viewing"} onChange={() => setType("viewing")} />
-                <div>
-                  <div style={{ fontWeight: 900 }}>内見</div>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>内見日時を選択して送信</div>
-                </div>
-              </label>
-
-              <label style={radioRow}>
-                <input type="radio" name="type" checked={type === "purchase"} onChange={() => setType("purchase")} />
-                <div>
-                  <div style={{ fontWeight: 900 }}>購入</div>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>資料ファイルを添付</div>
-                </div>
-              </label>
-
-              <label style={radioRow}>
-                <input type="radio" name="type" checked={type === "other"} onChange={() => setType("other")} />
-                <div>
-                  <div style={{ fontWeight: 900 }}>その他</div>
-                  <div style={{ fontSize: 12, color: "#64748b" }}>内容を入力して送信</div>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          {/* Form inputs */}
-          <div style={section}>
-            <div style={sectionTitle}>お客様情報</div>
-
-            <div style={isNarrow ? grid1 : grid}>
-              <div>
-                <div style={label}>会社名（必須）</div>
-                <input style={inp} value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} />
-              </div>
-
-              <div>
-                <div style={label}>会社TEL（必須）</div>
-                <input style={inp} value={form.company_phone} onChange={(e) => setForm({ ...form, company_phone: e.target.value })} />
-              </div>
-
-              <div>
-                <div style={label}>担当者名（必須）</div>
-                <input style={inp} value={form.person_name} onChange={(e) => setForm({ ...form, person_name: e.target.value })} />
-              </div>
-
-              <div>
-                <div style={label}>携帯（必須）</div>
-                <input style={inp} value={form.person_mobile} onChange={(e) => setForm({ ...form, person_mobile: e.target.value })} />
-              </div>
-
-              <div>
-                <div style={label}>Gmail（必須）</div>
+@@ -393,51 +473,75 @@ export default function InquiryPage() {
                 <input
                   style={inp}
                   type="email"
@@ -436,13 +302,30 @@ export default function InquiryPage() {
             {type === "viewing" && (
               <div style={{ marginTop: 12 }}>
                 <div style={label}>内見日時（必須）</div>
-                  <input
-                  style={inp}
-                  type="datetime-local"
-                  step={VIEWING_MINUTE_STEP * 60}
-                  value={form.visit_datetime}
-                  onChange={(e) => setForm({ ...form, visit_datetime: e.target.value })}
-                />
+                <div style={{ display: "grid", gridTemplateColumns: isNarrow ? "1fr" : "1.4fr 1fr 1fr", gap: 8 }}>
+                  <input style={inp} type="date" value={visitDate} onChange={(e) => onVisitDateChange(e.target.value)} />
+                  <select style={inp} value={visitHour} onChange={(e) => onVisitHourChange(e.target.value)}>
+                    <option value="">時</option>
+                    {HOUR_OPTIONS.map((hour) => (
+                      <option key={hour} value={hour}>
+                        {hour}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    style={inp}
+                    value={visitMinute}
+                    onChange={(e) => onVisitMinuteChange(e.target.value)}
+                    disabled={!visitHour}
+                  >
+                    <option value="">分</option>
+                    {MINUTE_OPTIONS.filter((minute) => !(visitHour === String(VIEWING_END_HOUR).padStart(2, "0") && minute !== "00")).map((minute) => (
+                      <option key={minute} value={minute}>
+                        {minute}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div style={hint}>※ 08:00〜20:00 / 30分刻みで選択してください</div>
               </div>
             )}
@@ -469,19 +352,3 @@ export default function InquiryPage() {
                   style={{ ...inp, minHeight: 120, resize: "vertical" }}
                   value={form.other_text}
                   onChange={(e) => setForm({ ...form, other_text: e.target.value })}
-                  placeholder="ご要望・質問など"
-                />
-              </div>
-            )}
-
-            <button onClick={submit} style={button}>
-              送信する
-            </button>
-
-            {!!msg && <div style={msgStyle}>{msg}</div>}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
