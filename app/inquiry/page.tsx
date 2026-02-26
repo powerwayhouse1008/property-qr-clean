@@ -455,7 +455,7 @@ export default function InquiryPage() {
 
           <div style={infoCard}>
             <div style={{ display: "grid", gridTemplateColumns: isNarrow ? "1fr" : "1fr 1fr", gap: 8 }}>
-              <div><b>物件名:</b> {p?.property_name || "-"}</div>
+              <div><b>物件名:</b> {p?.building_name || "-"}</div>
               <div><b>状態:</b> {statusLabel(p?.status)}</div>
               {p?.property_name && <div><b>物件名:</b> {p.property_name}</div>}
               {p?.address && <div><b>住所:</b> {p.address}</div>}
