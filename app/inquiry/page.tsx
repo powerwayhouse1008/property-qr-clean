@@ -426,7 +426,7 @@ export default function InquiryPage() {
         <div style={shell}>
           <div style={glass}>
             <div style={headerRow}>
-               <img src="/powerway-house-logo.svg" alt="POWERWAY HOUSE" style={logo} />
+                         <img src="/powerway-house-logo.svg" alt="POWERWAY HOUSE" style={logo} />
               <div>
                 <h2 style={title}>物件お問い合わせ</h2>
                 <div style={subtitle}>POWERWAY HOUSE</div>
@@ -445,7 +445,63 @@ export default function InquiryPage() {
     <div style={page}>
       <div style={shell}>
         <div style={glass}>
-@@ -393,51 +526,75 @@ export default function InquiryPage() {
+  <div style={headerRow}>
+            <img src="/powerway-house-logo.svg" alt="POWERWAY HOUSE" style={logo} />
+            <div>
+              <h2 style={title}>物件お問い合わせ</h2>
+              <div style={subtitle}>POWERWAY HOUSE</div>
+            </div>
+          </div>
+
+          <div style={infoCard}>
+            <div style={{ display: "grid", gridTemplateColumns: isNarrow ? "1fr" : "1fr 1fr", gap: 8 }}>
+              <div><b>物件ID:</b> {property_id}</div>
+              <div><b>状態:</b> {statusLabel(p?.status)}</div>
+              {p?.property_name && <div><b>物件名:</b> {p.property_name}</div>}
+              {p?.address && <div><b>住所:</b> {p.address}</div>}
+            </div>
+          </div>
+
+          <div style={section}>
+            <div style={sectionTitle}>お問い合わせ種別</div>
+            <div style={radioWrap}>
+              <label style={radioRow}>
+                <input type="radio" checked={type === "viewing"} onChange={() => setType("viewing")} />
+                内見予約
+              </label>
+              <label style={radioRow}>
+                <input type="radio" checked={type === "purchase"} onChange={() => setType("purchase")} />
+                購入相談
+              </label>
+              <label style={radioRow}>
+                <input type="radio" checked={type === "other"} onChange={() => setType("other")} />
+                その他
+              </label>
+            </div>
+
+            <div style={isNarrow ? grid1 : grid}>
+              <div>
+                <div style={label}>会社名（必須）</div>
+                <input style={inp} value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} />
+              </div>
+
+              <div>
+                <div style={label}>会社電話番号（必須）</div>
+                <input style={inp} value={form.company_phone} onChange={(e) => setForm({ ...form, company_phone: e.target.value })} />
+              </div>
+
+              <div>
+                <div style={label}>担当者名（必須）</div>
+                <input style={inp} value={form.person_name} onChange={(e) => setForm({ ...form, person_name: e.target.value })} />
+              </div>
+
+              <div>
+                <div style={label}>担当者携帯（必須）</div>
+                <input style={inp} value={form.person_mobile} onChange={(e) => setForm({ ...form, person_mobile: e.target.value })} />
+              </div>
+
+              <div>
+                <div style={label}>メールアドレス（必須）</div>
                 <input
                   style={inp}
                   type="email"
@@ -467,7 +523,7 @@ export default function InquiryPage() {
               </div>
             </div>
 
-            {/* viewing */}
+           
             {type === "viewing" && (
               <div style={{ marginTop: 12 }}>
                 <div style={label}>内見日時（必須）</div>
@@ -499,7 +555,7 @@ export default function InquiryPage() {
               </div>
             )}
 
-            {/* purchase */}
+            
             {type === "purchase" && (
               <div style={{ marginTop: 12 }}>
                 <div style={label}>購入資料（必須：PDF/JPG/PNG）</div>
@@ -513,7 +569,7 @@ export default function InquiryPage() {
               </div>
             )}
 
-            {/* other */}
+            
             {type === "other" && (
               <div style={{ marginTop: 12 }}>
                 <div style={label}>その他内容</div>
@@ -521,3 +577,15 @@ export default function InquiryPage() {
                   style={{ ...inp, minHeight: 120, resize: "vertical" }}
                   value={form.other_text}
                   onChange={(e) => setForm({ ...form, other_text: e.target.value })}
+                  />
+              </div>
+            )}
+
+            <button style={button} onClick={submit}>送信する</button>
+            {!!msg && <div style={msgStyle}>{msg}</div>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
