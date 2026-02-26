@@ -4,7 +4,7 @@ export const PropertyCreateSchema = z.object({
   property_code: z.string().min(1),
   building_name: z.string().min(1),
   address: z.string().min(1),
-  status: z.enum(["available", "sold", "rented"]),
+  status: z.enum(["available", "pending", "sold", "rented"]),
   view_method: z.string().min(1), // 内見方法
   manager_name: z.string().min(1), // 担当者
   manager_email: z.string().email(), // 担当者メール
