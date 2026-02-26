@@ -282,6 +282,7 @@ export default function InquiryPage() {
     backdropFilter: "blur(10px)",
   };
 
+  
   const headerRow: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -299,7 +300,8 @@ export default function InquiryPage() {
     border: "1px solid rgba(148,163,184,0.3)",
     background: "#fff",
   };
-  
+
+
   const title: React.CSSProperties = {
     fontSize: 24,
     fontWeight: 900,
@@ -331,15 +333,118 @@ export default function InquiryPage() {
     background: "rgba(255,255,255,0.60)",
   };
 
-  const sectionTitle: React.CSSProperties = { fontWeight: 900, marginBottom: 10, color: "#0f172a" };
+  const sectionTitle: React.CSSProperties = {
+    fontWeight: 900,
+    marginBottom: 10,
+    color: "#0f172a",
+  };
 
-  const radioWrap: React.CSSProperties = { display: "grid", gap: 8 };
+  const radioWrap: React.CSSProperties = {
+    display: "grid",
+    gap: 8,
+  };
 
   const radioRow: React.CSSProperties = {
     display: "flex",
     gap: 10,
     alignItems: "center",
-@@ -393,51 +492,75 @@ export default function InquiryPage() {
+    padding: "10px 12px",
+    borderRadius: 14,
+    border: "1px solid rgba(148,163,184,0.22)",
+    background: "rgba(255,255,255,0.70)",
+  };
+
+  const grid: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 12,
+    marginTop: 14,
+  };
+
+  const grid1: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    gap: 12,
+    marginTop: 12,
+  };
+
+  const label: React.CSSProperties = {
+    fontWeight: 900,
+    color: "#0f172a",
+    marginBottom: 6,
+    fontSize: 13,
+  };
+
+  const inp: React.CSSProperties = {
+    width: "100%",
+    padding: "11px 12px",
+    borderRadius: 14,
+    border: "1px solid rgba(148,163,184,0.35)",
+    background: "rgba(255,255,255,0.92)",
+    boxSizing: "border-box",
+    outline: "none",
+  };
+
+  const hint: React.CSSProperties = {
+    marginTop: 6,
+    fontSize: 12,
+    color: "#64748b",
+  };
+
+  const button: React.CSSProperties = {
+    marginTop: 14,
+    padding: "13px 14px",
+    borderRadius: 16,
+    border: 0,
+    background: "linear-gradient(135deg, rgba(59,130,246,0.95), rgba(34,211,238,0.90))",
+    color: "#fff",
+    fontWeight: 900,
+    cursor: "pointer",
+    width: "100%",
+    boxShadow: "0 14px 30px rgba(59,130,246,0.25)",
+    letterSpacing: 0.5,
+  };
+
+  const msgStyle: React.CSSProperties = {
+    marginTop: 12,
+    fontWeight: 900,
+    color: msg.startsWith("✅")
+      ? "#16a34a"
+      : msg.startsWith("❌")
+        ? "#dc2626"
+        : msg.startsWith("⚠️")
+          ? "#d97706"
+          : "#0f172a",
+    whiteSpace: "pre-wrap",
+  };
+
+
+  if (!property_id) {
+    return (
+      <div style={page}>
+        <div style={shell}>
+          <div style={glass}>
+            <div style={headerRow}>
+               <img src="/powerway-house-logo.svg" alt="POWERWAY HOUSE" style={logo} />
+              <div>
+                <h2 style={title}>物件お問い合わせ</h2>
+                <div style={subtitle}>POWERWAY HOUSE</div>
+              </div>
+            </div>
+            <div style={infoCard}>
+              <div style={{ color: "#dc2626", fontWeight: 900 }}>❌ property_id がありません（QRリンクが不正）</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={page}>
+      <div style={shell}>
+        <div style={glass}>
+@@ -393,51 +526,75 @@ export default function InquiryPage() {
                 <input
                   style={inp}
                   type="email"
