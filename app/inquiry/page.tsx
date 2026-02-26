@@ -300,6 +300,7 @@ export default function InquiryPage() {
     border: "1px solid rgba(148,163,184,0.3)",
     background: "#fff",
   };
+  
 
 
   const title: React.CSSProperties = {
