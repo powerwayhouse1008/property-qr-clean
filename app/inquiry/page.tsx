@@ -268,7 +268,10 @@ export default function InquiryPage() {
       "linear-gradient(135deg, #eef2ff 0%, #f8fafc 45%, #ecfeff 100%)",
   };
 
-  const shell: React.CSSProperties = { maxWidth: 980, margin: "0 auto" };
+  const shell: React.CSSProperties = {
+    maxWidth: 980,
+    margin: "0 auto",
+  };
 
   const glass: React.CSSProperties = {
     background: "rgba(255,255,255,0.72)",
@@ -276,7 +279,67 @@ export default function InquiryPage() {
     borderRadius: 22,
     padding: 18,
     boxShadow: "0 18px 60px rgba(15,23,42,0.10)",
-@@ -393,51 +473,75 @@ export default function InquiryPage() {
+    backdropFilter: "blur(10px)",
+  };
+
+  const headerRow: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  };
+
+  const logo: React.CSSProperties = {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    boxShadow: "0 12px 30px rgba(59,130,246,0.25)",
+    flex: "0 0 auto",
+    objectFit: "cover",
+    border: "1px solid rgba(148,163,184,0.3)",
+    background: "#fff",
+  };
+  
+  const title: React.CSSProperties = {
+    fontSize: 24,
+    fontWeight: 900,
+    margin: 0,
+    lineHeight: 1.15,
+    color: "#0f172a",
+  };
+
+  const subtitle: React.CSSProperties = {
+    marginTop: 4,
+    fontSize: 13,
+    color: "#475569",
+    lineHeight: 1.4,
+  };
+
+  const infoCard: React.CSSProperties = {
+    marginTop: 10,
+    padding: 14,
+    borderRadius: 18,
+    border: "1px solid rgba(148,163,184,0.25)",
+    background: "rgba(255,255,255,0.65)",
+  };
+
+  const section: React.CSSProperties = {
+    marginTop: 14,
+    padding: 14,
+    borderRadius: 18,
+    border: "1px solid rgba(148,163,184,0.22)",
+    background: "rgba(255,255,255,0.60)",
+  };
+
+  const sectionTitle: React.CSSProperties = { fontWeight: 900, marginBottom: 10, color: "#0f172a" };
+
+  const radioWrap: React.CSSProperties = { display: "grid", gap: 8 };
+
+  const radioRow: React.CSSProperties = {
+    display: "flex",
+    gap: 10,
+    alignItems: "center",
+@@ -393,51 +492,75 @@ export default function InquiryPage() {
                 <input
                   style={inp}
                   type="email"
