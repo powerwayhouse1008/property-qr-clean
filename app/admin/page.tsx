@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode.react";
 
-type Status = "available" | "sold" | "rented";
+type Status = "available" | "pending" | "sold" | "rented";
 const statusLabelMap: Record<Status, string> = {
   available: "募集中",
+  pending: "申込有り",
   sold: "成約",
   rented: "賃貸中",
 };
@@ -197,6 +198,7 @@ function toggleOne(id: string, checked: boolean) {
             onChange={(e) => setForm({ ...form, status: e.target.value as Status })}
           >
             <option value="available">{statusLabelMap.available} (available)</option>
+            <option value="pending">{statusLabelMap.pending} (pending)</option>
             <option value="sold">{statusLabelMap.sold} (sold)</option>
             <option value="rented">{statusLabelMap.rented} (rented)</option>
           </select>
@@ -329,6 +331,7 @@ function toggleOne(id: string, checked: boolean) {
                   <td style={td}>
                     <select value={p.status} onChange={(e) => updateStatus(p.id, e.target.value as Status)}>
                        <option value="available">{statusLabelMap.available} (available)</option>
+                      <option value="pending">{statusLabelMap.pending} (pending)</option>
                       <option value="rented">{statusLabelMap.rented} (rented)</option>
                       <option value="sold">{statusLabelMap.sold} (sold)</option>
                     </select>
