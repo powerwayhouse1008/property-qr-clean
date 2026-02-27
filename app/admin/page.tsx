@@ -26,11 +26,28 @@ type Property = {
   form_url?: string | null; // ✅ dùng form_url để render QR + Link
   created_at?: string;
 };
+function buildInquiryUrl(propertyId: string, savedFormUrl?: string | null) {
+  if (typeof window === "undefined") return savedFormUrl ?? "";
+
+  const origin = window.location.origin.replace(/\/+$/, "");
+
+  if (!savedFormUrl) {
+    return `${origin}/inquiry?property_id=${propertyId}&via=qrcode`;
+  }
+
+  try {
+    const parsed = new URL(savedFormUrl, origin);
+    const via = parsed.searchParams.get("via") || "qrcode";
+    return `${origin}/inquiry?property_id=${propertyId}&via=${encodeURIComponent(via)}`;
+  } catch {
+    return `${origin}/inquiry?property_id=${propertyId}&via=qrcode`;
+  }
+}
 
 export default function AdminPage() {
   const [props, setProps] = useState<Property[]>([]);
   const [msg, setMsg] = useState<string>("");
-  const [created, setCreated] = useState<{ formUrl: string; code: string } | null>(null);
+   const [created, setCreated] = useState<{ formUrl: string; code: string; id: string } | null>(null);
    const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const selectedCount = selectedIds.length;
 
@@ -75,7 +92,7 @@ export default function AdminPage() {
     const j = await r.json();
     if (!j.ok) return setMsg("❌ " + j.error);
 
-    setCreated({ formUrl: j.formUrl, code: j.property.property_code });
+    setCreated({ formUrl: j.formUrl, code: j.property.property_code, id: j.property.id });
     setMsg("✅ created " + j.property.property_code);
     await load();
   }
@@ -155,6 +172,7 @@ function toggleOne(id: string, checked: boolean) {
     whiteSpace: "nowrap",
   };
   const allSelected = props.length > 0 && selectedIds.length === props.length;
+  const createdOpenUrl = created ? buildInquiryUrl(created.id, created.formUrl) : "";
 
   return (
     <div style={{ maxWidth: 1100, margin: "20px auto", padding: 14, fontFamily: "system-ui" }}>
@@ -313,7 +331,9 @@ function toggleOne(id: string, checked: boolean) {
             </thead>
 
             <tbody>
-              {props.map((p) => (
+              {props.map((p) => {
+                const inquiryUrl = buildInquiryUrl(p.id, p.form_url);
+                return (
                 <tr key={p.id}>
                   <td style={td}>
                     <input
@@ -342,8 +362,8 @@ function toggleOne(id: string, checked: boolean) {
 
                   {/* ✅ QR đúng cột QR */}
                   <td style={td}>
-                    {p.form_url ? (
-                      <a href={p.form_url} target="_blank" rel="noreferrer" title="Open form">
+                                      {inquiryUrl ? (
+                      <a href={inquiryUrl} target="_blank" rel="noreferrer" title="Open form">
                         <div
                           style={{
                             background: "#fafafa",
@@ -353,7 +373,7 @@ function toggleOne(id: string, checked: boolean) {
                             display: "inline-block",
                           }}
                         >
-                          <QRCode value={p.form_url} size={80} />
+                        <QRCode value={inquiryUrl} size={80} />
                         </div>
                       </a>
                     ) : (
@@ -363,8 +383,8 @@ function toggleOne(id: string, checked: boolean) {
 
                   {/* ✅ Link đúng cột Link */}
                   <td style={td}>
-                    {p.form_url ? (
-                      <a href={p.form_url} target="_blank" rel="noreferrer">
+                    {inquiryUrl ? (
+                      <a href={inquiryUrl} target="_blank" rel="noreferrer">
                         Open form
                       </a>
                     ) : (
@@ -372,7 +392,8 @@ function toggleOne(id: string, checked: boolean) {
                     )}
                   </td>
                 </tr>
-              ))}
+               );
+              })}
 
               {props.length === 0 && (
                 <tr>
