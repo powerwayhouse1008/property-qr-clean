@@ -19,6 +19,11 @@ const inquiryTypeLabelMap: Record<string, string> = {
   purchase: "購入相談",
   other: "その他",
 };
+const customerSubjectTypeMap: Record<string, string> = {
+  viewing: "内見",
+  purchase: "購入相談",
+  other: "その他",
+};
 
 function toStatusLabel(status: string | null | undefined) {
   if (!status) return "-";
@@ -28,6 +33,10 @@ function toStatusLabel(status: string | null | undefined) {
 function toInquiryTypeLabel(kind: string | null | undefined) {
   if (!kind) return "-";
   return inquiryTypeLabelMap[kind] ?? kind;
+}
+function toCustomerSubjectType(kind: string | null | undefined) {
+  if (!kind) return "その他";
+  return customerSubjectTypeMap[kind] ?? kind;
 }
 function formatDateTimeJa(raw: string | null | undefined) {
   if (!raw) return "-";
@@ -154,23 +163,37 @@ ${attachmentText}
     const msgInternalForTeams = `\`\`\`\r\n${msgInternal.replace(/\n/g, "\r\n")}\r\n\`\`\``;
 
     // Customer confirmation email: CHỈ khi viewing mới có 内見方法 + 内見日時
-    const msgCustomer = `お問い合わせありがとうございます。受付完了しました。
+      const customerSubjectType = toCustomerSubjectType(body.inquiry_type);
+    const customerPropertyName = `${prop.property_code ?? ""} ${prop.building_name ?? ""}`.trim() || "-";
+    const customerSubject = `${customerSubjectType}受付完了のお知らせ（物件：${customerPropertyName}）`;
+    const customerDetailLines = isViewing
+      ? `【内見方法】${prop.view_method ?? "-"}
+【内見日時】${visitDatetimeJa}`
+      : isPurchase
+      ? `【購入申込書】${purchaseFileUrl ?? "-"}`
+      : `【お問い合わせ内容】${body.other_text?.trim() || "-"}`;
 
-物件: ${prop.property_code ?? "-"} ${prop.building_name ?? "-"}
-住所: ${prop.address ?? "-"}
-状態: ${propertyStatusLabel}
-種別: ${inquiryTypeLabel}
+    const msgCustomer = `件名：${customerSubject}
 
-${
-  isViewing
-     ? `申込日時: ${submittedAtJa}
-内見方法: ${prop.view_method ?? "-"}
-内見日時: ${visitDatetimeJa}`
-    : isPurchase
-    ? `購入資料: ${purchaseFileUrl ?? "-"}`
-    : ""
-}
-`;
+${body.person_name} 様
+
+この度はお問い合わせいただき、誠にありがとうございます。
+下記内容にて受付が完了いたしましたので、ご確認ください。
+
+――――――――――
+【物件名】${customerPropertyName}
+【所在地】${prop.address ?? "-"}
+【募集状況】${propertyStatusLabel}
+【お問い合わせ種別】${inquiryTypeLabel}
+
+【お申込日時】${submittedAtJa}
+${customerDetailLines}
+――――――――――
+
+当日はどうぞお気をつけてお越しください。
+ご不明点がございましたら、お気軽にご連絡ください。
+
+何卒よろしくお願い申し上げます。`;
 
     // ===== 5) Notify with debug flags =====
     let teamsOk = false;
@@ -217,7 +240,7 @@ ${
     try {
        await sendMail({
         to: body.person_gmail,
-        subject: `受付完了：${prop.property_code ?? ""} ${prop.building_name ?? ""}`,
+        subject: customerSubject,
         text: msgCustomer,
       });
       customerMailOk = true;
