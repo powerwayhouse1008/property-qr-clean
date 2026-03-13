@@ -22,6 +22,7 @@ type Property = {
   property_code: string;
   building_name: string;
   address: string;
+  price?: string | null;
   view_method: string;
   status: Status;
   manager_name?: string | null;
@@ -103,13 +104,15 @@ export default function AdminPage() {
   const [expandedPropertyId, setExpandedPropertyId] = useState<string | null>(null);
   const [historyLoadingId, setHistoryLoadingId] = useState<string>("");
   const [historyMap, setHistoryMap] = useState<Record<string, InquiryHistory[]>>({});
-
+const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const [savingPriceId, setSavingPriceId] = useState<string>("");
   const selectedCount = selectedIds.length;
 
   const [form, setForm] = useState({
     building_name: "",
     address: "",
     view_method: "",
+    price: "",
     status: "available" as Status,
     manager_name: "",
     manager_email: "",
@@ -122,6 +125,7 @@ export default function AdminPage() {
       if (!j.ok) return setMsg("❌ " + j.error);
       const nextProps = j.properties as Property[];
       setProps(nextProps);
+      setPriceDrafts(Object.fromEntries(nextProps.map((item) => [item.id, item.price ?? ""])));
       setSelectedIds((prev) => prev.filter((id) => nextProps.some((item) => item.id === id)));
       setMsg(`✅ loaded ${j.properties.length} properties`);
     } catch (e: any) {
@@ -161,6 +165,36 @@ export default function AdminPage() {
     });
     const j = await r.json();
     if (!j.ok) return alert(j.error);
+    await load();
+  }
+ async function updatePrice(id: string) {
+    const property = props.find((item) => item.id === id);
+    if (!property) return;
+
+    const nextPrice = (priceDrafts[id] ?? "").trim();
+    if (!nextPrice || nextPrice === (property.price ?? "")) {
+      setPriceDrafts((prev) => ({ ...prev, [id]: property.price ?? "" }));
+      return;
+    }
+
+    setSavingPriceId(id);
+    const r = await fetch("/api/admin/price", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ property_id: id, price: nextPrice }),
+    });
+    const j = await r.json();
+    setSavingPriceId("");
+
+    if (!j.ok) {
+      alert(j.error);
+      setPriceDrafts((prev) => ({ ...prev, [id]: property.price ?? "" }));
+      return;
+    }
+
+    if (j.changed) {
+      setMsg(`✅ 価格を更新: 通知 ${j.notified ?? 0} 件 / 失敗 ${j.failed ?? 0} 件`);
+    }
     await load();
   }
 
@@ -292,6 +326,12 @@ export default function AdminPage() {
             value={form.view_method}
             onChange={(e) => setForm({ ...form, view_method: e.target.value })}
           />
+          <input
+            style={inp}
+            placeholder="価額 (price) *"
+            value={form.price}
+            onChange={(e) => setForm({ ...form, price: e.target.value })}
+          />
 
           <select style={inp} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as Status })}>
             <option value="available">{statusLabelMap.available} (available)</option>
@@ -401,6 +441,7 @@ export default function AdminPage() {
                 <th style={th}>コード</th>
                 <th style={th}>建物</th>
                 <th style={th}>住所</th>
+                <th style={th}>価額</th>
                 <th style={th}>内見方法</th>
                 <th style={th}>ステータス</th>
                 <th style={th}>担当者メール</th>
@@ -446,6 +487,22 @@ export default function AdminPage() {
                       </td>
                       <td style={td}>{p.building_name}</td>
                       <td style={td}>{p.address}</td>
+                      <td style={td}>
+                        <input
+                          style={{ ...inp, minWidth: 140 }}
+                          value={priceDrafts[p.id] ?? ""}
+                          onChange={(e) => setPriceDrafts((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                          onBlur={() => updatePrice(p.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              updatePrice(p.id);
+                            }
+                          }}
+                          disabled={savingPriceId === p.id}
+                          aria-label={`price-${p.property_code}`}
+                        />
+                      </td>
                       <td style={td}>{p.view_method ?? "-"}</td>
 
                       <td style={td}>
@@ -493,7 +550,7 @@ export default function AdminPage() {
 
                     {isExpanded && (
                       <tr>
-                        <td colSpan={10} style={{ ...td, whiteSpace: "normal", background: "#f8fafc" }}>
+                        <td colSpan={11} style={{ ...td, whiteSpace: "normal", background: "#f8fafc" }}>
                           <div style={{ fontWeight: 700, marginBottom: 8 }}>顧客登録履歴 ({serialCode})</div>
                           {historyLoadingId === p.id ? (
                             <div>Loading...</div>
@@ -536,7 +593,7 @@ export default function AdminPage() {
 
               {props.length === 0 && (
                 <tr>
-                  <td style={td} colSpan={10}>
+                  <td style={td} colSpan={11}>
                     (no data)
                   </td>
                 </tr>
