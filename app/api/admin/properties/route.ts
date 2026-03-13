@@ -9,7 +9,7 @@ export async function GET() {
     const { data, error } = await supabaseAdmin
       .from("properties")
       .select(
-        "id, property_code, building_name, address, view_method, status, manager_name, manager_email, form_url, created_at"
+        "id, property_code, building_name, address, price, view_method, status, manager_name, manager_email, form_url, created_at"
       )
       .order("created_at", { ascending: false });
 
