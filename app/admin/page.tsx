@@ -318,7 +318,39 @@ export default function AdminPage() {
 
   const allSelected = filteredProps.length > 0 && filteredProps.every((item) => selectedIds.includes(item.id));
   const createdOpenUrl = created ? buildInquiryUrl(created.id, created.formUrl) : "";
-function scrollTableBy(offset: number) {
+const [topScrollWidth, setTopScrollWidth] = useState(0);
+
+  useEffect(() => {
+    const updateTopScrollWidth = () => {
+      if (!tableScrollRef.current) return;
+      setTopScrollWidth(tableScrollRef.current.scrollWidth);
+    };
+
+    updateTopScrollWidth();
+    window.addEventListener("resize", updateTopScrollWidth);
+
+    return () => {
+      window.removeEventListener("resize", updateTopScrollWidth);
+    };
+  }, [filteredProps.length, expandedPropertyId]);
+
+  function handleTopScroll() {
+    if (!topScrollRef.current || !tableScrollRef.current) return;
+    if (syncingScrollRef.current === "table") return;
+    syncingScrollRef.current = "top";
+    tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+    syncingScrollRef.current = null;
+  }
+
+  function handleTableScroll() {
+    if (!topScrollRef.current || !tableScrollRef.current) return;
+    if (syncingScrollRef.current === "top") return;
+    syncingScrollRef.current = "table";
+    topScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft;
+    syncingScrollRef.current = null;
+  }
+
+  function scrollTableBy(offset: number) {
     if (!tableScrollRef.current) return;
     tableScrollRef.current.scrollBy({ left: offset, behavior: "smooth" });
   }
@@ -469,7 +501,35 @@ function scrollTableBy(offset: number) {
       <div style={{ marginTop: 8, color: "#475569", fontSize: 13 }}>
           表示件数: {filteredProps.length} / {props.length}
         </div>
-        <div ref={tableScrollRef} style={{ overflowX: "auto", marginTop: 10, paddingBottom: 6 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+          <button
+            onClick={() => scrollTableBy(-280)}
+            style={{ border: "none", background: "transparent", color: "#6b7280", cursor: "pointer", fontSize: 16 }}
+            aria-label="scroll table left"
+          >
+            ◀
+          </button>
+          <div
+            ref={topScrollRef}
+            onScroll={handleTopScroll}
+            style={{ overflowX: "auto", flex: 1, margin: "0 8px" }}
+            aria-label="top horizontal scrollbar"
+          >
+            <div
+              ref={topScrollInnerRef}
+              style={{ width: topScrollWidth || "100%", height: 10 }}
+            />
+          </div>
+          <button
+            onClick={() => scrollTableBy(280)}
+            style={{ border: "none", background: "transparent", color: "#6b7280", cursor: "pointer", fontSize: 16 }}
+            aria-label="scroll table right"
+          >
+            ▶
+          </button>
+        </div>
+
+        <div ref={tableScrollRef} onScroll={handleTableScroll} style={{ overflowX: "auto", marginTop: 8, paddingBottom: 6 }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
@@ -638,23 +698,6 @@ function scrollTableBy(offset: number) {
               )}
             </tbody>
           </table>
-        </div>
-        
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
-          <button
-            onClick={() => scrollTableBy(-280)}
-            style={{ border: "none", background: "transparent", color: "#6b7280", cursor: "pointer", fontSize: 16 }}
-            aria-label="scroll table left"
-          >
-            ◀
-          </button>
-          <button
-            onClick={() => scrollTableBy(280)}
-            style={{ border: "none", background: "transparent", color: "#6b7280", cursor: "pointer", fontSize: 16 }}
-            aria-label="scroll table right"
-          >
-            ▶
-          </button>
         </div>
       </div>
     </div>
