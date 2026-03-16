@@ -107,7 +107,10 @@ export default function AdminPage() {
   const [historyMap, setHistoryMap] = useState<Record<string, InquiryHistory[]>>({});
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
   const [searchKeyword, setSearchKeyword] = useState("");
+  const topScrollRef = useRef<HTMLDivElement | null>(null);
+  const topScrollInnerRef = useRef<HTMLDivElement | null>(null);
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
+  const syncingScrollRef = useRef<"top" | "table" | null>(null);
   const [savingPriceId, setSavingPriceId] = useState<string>("");
   const selectedCount = selectedIds.length;
 
