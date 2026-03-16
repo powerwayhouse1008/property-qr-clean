@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode.react";
 
 type Status = "available" | "pending" | "sold" | "rented";
@@ -104,7 +105,9 @@ export default function AdminPage() {
   const [expandedPropertyId, setExpandedPropertyId] = useState<string | null>(null);
   const [historyLoadingId, setHistoryLoadingId] = useState<string>("");
   const [historyMap, setHistoryMap] = useState<Record<string, InquiryHistory[]>>({});
-const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const [savingPriceId, setSavingPriceId] = useState<string>("");
   const selectedCount = selectedIds.length;
 
@@ -207,10 +210,10 @@ const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
 
   function toggleAll(checked: boolean) {
     if (checked) {
-      setSelectedIds(props.map((p) => p.id));
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...filteredProps.map((p) => p.id)])));
       return;
     }
-    setSelectedIds([]);
+    setSelectedIds((prev) => prev.filter((id) => !filteredProps.some((item) => item.id === id)));
   }
 
   async function deleteSelected() {
@@ -291,11 +294,37 @@ const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
     whiteSpace: "nowrap",
   };
 
-  const allSelected = props.length > 0 && selectedIds.length === props.length;
+  const filteredProps = useMemo(() => {
+    const keyword = searchKeyword.trim().toLowerCase();
+    if (!keyword) return props;
+
+    return props.filter((item) => {
+      const displayCode = item.property_code;
+      return [
+        displayCode,
+        item.building_name,
+        item.address,
+        item.price,
+        item.view_method,
+        statusLabelMap[item.status],
+        item.manager_name,
+        item.manager_email,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(keyword);
+    });
+  }, [props, searchKeyword]);
+
+  const allSelected = filteredProps.length > 0 && filteredProps.every((item) => selectedIds.includes(item.id));
   const createdOpenUrl = created ? buildInquiryUrl(created.id, created.formUrl) : "";
+function scrollTableBy(offset: number) {
+    if (!tableScrollRef.current) return;
+    tableScrollRef.current.scrollBy({ left: offset, behavior: "smooth" });
+  }
 
   return (
-    <div style={{ maxWidth: 1100, margin: "20px auto", padding: 14, fontFamily: "system-ui" }}>
+    <div style={{ width: "100%", margin: "20px auto", padding: 14, fontFamily: "system-ui", boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <h2 style={{ margin: 0 }}>Admin - 物件管理</h2>
       </div>
@@ -398,7 +427,14 @@ const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
       <div style={card}>
         <h3 style={{ marginTop: 0 }}>物件一覧（ステータス変更）</h3>
 
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <input
+            style={{ ...inp, width: "min(420px, 100%)" }}
+            placeholder="検索（コード / 建物 / 住所 / 価額 / ステータス / 担当者）"
+            value={searchKeyword}
+            onChange={(e) => setSearchKeyword(e.target.value)}
+          />
+
           <button
             onClick={load}
             style={{
@@ -430,8 +466,10 @@ const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
             選択した項目を削除 ({selectedCount})
           </button>
         </div>
-
-        <div style={{ overflow: "auto", marginTop: 10 }}>
+      <div style={{ marginTop: 8, color: "#475569", fontSize: 13 }}>
+          表示件数: {filteredProps.length} / {props.length}
+        </div>
+        <div ref={tableScrollRef} style={{ overflowX: "auto", marginTop: 10, paddingBottom: 6 }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
@@ -452,7 +490,7 @@ const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
             </thead>
 
             <tbody>
-              {props.map((p, index) => {
+             {filteredProps.map((p, index) => {
                 const inquiryUrl = buildInquiryUrl(p.id, p.form_url);
                 const serialCode = toDisplayCode(p.property_code, index);
                 const isExpanded = expandedPropertyId === p.id;
@@ -591,15 +629,32 @@ const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
                 );
               })}
 
-              {props.length === 0 && (
+               {filteredProps.length === 0 && (
                 <tr>
                   <td style={td} colSpan={11}>
-                    (no data)
+                     検索結果がありません
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+        </div>
+        
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+          <button
+            onClick={() => scrollTableBy(-280)}
+            style={{ border: "none", background: "transparent", color: "#6b7280", cursor: "pointer", fontSize: 16 }}
+            aria-label="scroll table left"
+          >
+            ◀
+          </button>
+          <button
+            onClick={() => scrollTableBy(280)}
+            style={{ border: "none", background: "transparent", color: "#6b7280", cursor: "pointer", fontSize: 16 }}
+            aria-label="scroll table right"
+          >
+            ▶
+          </button>
         </div>
       </div>
     </div>
