@@ -106,12 +106,14 @@ export default function AdminPage() {
   const [historyLoadingId, setHistoryLoadingId] = useState<string>("");
   const [historyMap, setHistoryMap] = useState<Record<string, InquiryHistory[]>>({});
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const [viewMethodDrafts, setViewMethodDrafts] = useState<Record<string, string>>({});
   const [searchKeyword, setSearchKeyword] = useState("");
   const topScrollRef = useRef<HTMLDivElement | null>(null);
   const topScrollInnerRef = useRef<HTMLDivElement | null>(null);
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const syncingScrollRef = useRef<"top" | "table" | null>(null);
   const [savingPriceId, setSavingPriceId] = useState<string>("");
+  const [savingViewMethodId, setSavingViewMethodId] = useState<string>("");
   const selectedCount = selectedIds.length;
 
   const [form, setForm] = useState({
@@ -132,6 +134,7 @@ export default function AdminPage() {
       const nextProps = j.properties as Property[];
       setProps(nextProps);
       setPriceDrafts(Object.fromEntries(nextProps.map((item) => [item.id, item.price ?? ""])));
+      setViewMethodDrafts(Object.fromEntries(nextProps.map((item) => [item.id, item.view_method ?? ""])));
       setSelectedIds((prev) => prev.filter((id) => nextProps.some((item) => item.id === id)));
       setMsg(`✅ loaded ${j.properties.length} properties`);
     } catch (e: any) {
@@ -200,6 +203,36 @@ export default function AdminPage() {
 
     if (j.changed) {
       setMsg(`✅ 価格を更新: 通知 ${j.notified ?? 0} 件 / 失敗 ${j.failed ?? 0} 件`);
+    }
+    await load();
+  }
+async function updateViewMethod(id: string) {
+    const property = props.find((item) => item.id === id);
+    if (!property) return;
+
+    const nextViewMethod = (viewMethodDrafts[id] ?? "").trim();
+    if (!nextViewMethod || nextViewMethod === (property.view_method ?? "")) {
+      setViewMethodDrafts((prev) => ({ ...prev, [id]: property.view_method ?? "" }));
+      return;
+    }
+
+    setSavingViewMethodId(id);
+    const r = await fetch("/api/admin/view-method", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ property_id: id, view_method: nextViewMethod }),
+    });
+    const j = await r.json();
+    setSavingViewMethodId("");
+
+    if (!j.ok) {
+      alert(j.error);
+      setViewMethodDrafts((prev) => ({ ...prev, [id]: property.view_method ?? "" }));
+      return;
+    }
+
+    if (j.changed) {
+      setMsg("✅ 内見方法を更新しました");
     }
     await load();
   }
@@ -604,7 +637,22 @@ const [topScrollWidth, setTopScrollWidth] = useState(0);
                           aria-label={`price-${p.property_code}`}
                         />
                       </td>
-                      <td style={td}>{p.view_method ?? "-"}</td>
+                     <td style={td}>
+                        <input
+                          style={{ ...inp, minWidth: 180 }}
+                          value={viewMethodDrafts[p.id] ?? ""}
+                          onChange={(e) => setViewMethodDrafts((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                          onBlur={() => updateViewMethod(p.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              updateViewMethod(p.id);
+                            }
+                          }}
+                          disabled={savingViewMethodId === p.id}
+                          aria-label={`view-method-${p.property_code}`}
+                        />
+                      </td>
 
                       <td style={td}>
                         <select value={p.status} onChange={(e) => updateStatus(p.id, e.target.value as Status)}>
