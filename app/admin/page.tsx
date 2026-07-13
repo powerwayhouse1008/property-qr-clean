@@ -107,6 +107,8 @@ export default function AdminPage() {
   const [historyMap, setHistoryMap] = useState<Record<string, InquiryHistory[]>>({});
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
   const [viewMethodDrafts, setViewMethodDrafts] = useState<Record<string, string>>({});
+  const [managerNameDrafts, setManagerNameDrafts] = useState<Record<string, string>>({});
+  const [managerEmailDrafts, setManagerEmailDrafts] = useState<Record<string, string>>({});
   const [searchKeyword, setSearchKeyword] = useState("");
   const topScrollRef = useRef<HTMLDivElement | null>(null);
   const topScrollInnerRef = useRef<HTMLDivElement | null>(null);
@@ -114,6 +116,7 @@ export default function AdminPage() {
   const syncingScrollRef = useRef<"top" | "table" | null>(null);
   const [savingPriceId, setSavingPriceId] = useState<string>("");
   const [savingViewMethodId, setSavingViewMethodId] = useState<string>("");
+  const [savingManagerId, setSavingManagerId] = useState<string>("");
   const selectedCount = selectedIds.length;
 
   const [form, setForm] = useState({
@@ -135,6 +138,8 @@ export default function AdminPage() {
       setProps(nextProps);
       setPriceDrafts(Object.fromEntries(nextProps.map((item) => [item.id, item.price ?? ""])));
       setViewMethodDrafts(Object.fromEntries(nextProps.map((item) => [item.id, item.view_method ?? ""])));
+      setManagerNameDrafts(Object.fromEntries(nextProps.map((item) => [item.id, item.manager_name ?? ""])));
+      setManagerEmailDrafts(Object.fromEntries(nextProps.map((item) => [item.id, item.manager_email ?? ""])));
       setSelectedIds((prev) => prev.filter((id) => nextProps.some((item) => item.id === id)));
       setMsg(`✅ loaded ${j.properties.length} properties`);
     } catch (e: any) {
@@ -233,6 +238,47 @@ async function updateViewMethod(id: string) {
 
     if (j.changed) {
       setMsg("✅ 内見方法を更新しました");
+    }
+    await load();
+  }
+
+  async function updateManager(id: string) {
+    const property = props.find((item) => item.id === id);
+    if (!property) return;
+
+    const nextManagerName = (managerNameDrafts[id] ?? "").trim();
+    const nextManagerEmail = (managerEmailDrafts[id] ?? "").trim();
+    const prevManagerName = property.manager_name ?? "";
+    const prevManagerEmail = property.manager_email ?? "";
+
+    if (!nextManagerName || !nextManagerEmail || (nextManagerName === prevManagerName && nextManagerEmail === prevManagerEmail)) {
+      setManagerNameDrafts((prev) => ({ ...prev, [id]: prevManagerName }));
+      setManagerEmailDrafts((prev) => ({ ...prev, [id]: prevManagerEmail }));
+      return;
+    }
+
+    setSavingManagerId(id);
+    const r = await fetch("/api/admin/manager", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        property_id: id,
+        manager_name: nextManagerName,
+        manager_email: nextManagerEmail,
+      }),
+    });
+    const j = await r.json();
+    setSavingManagerId("");
+
+    if (!j.ok) {
+      alert(j.error);
+      setManagerNameDrafts((prev) => ({ ...prev, [id]: prevManagerName }));
+      setManagerEmailDrafts((prev) => ({ ...prev, [id]: prevManagerEmail }));
+      return;
+    }
+
+    if (j.changed) {
+      setMsg("Saved manager information");
     }
     await load();
   }
@@ -663,8 +709,38 @@ const [topScrollWidth, setTopScrollWidth] = useState(0);
                         </select>
                       </td>
 
-                      <td style={td}>{p.manager_email ?? "-"}</td>
-                      <td style={td}>{p.manager_name ?? "担当不明"}</td>
+                      <td style={td}>
+                        <input
+                          style={{ ...inp, minWidth: 220 }}
+                          value={managerEmailDrafts[p.id] ?? ""}
+                          onChange={(e) => setManagerEmailDrafts((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                          onBlur={() => updateManager(p.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              updateManager(p.id);
+                            }
+                          }}
+                          disabled={savingManagerId === p.id}
+                          aria-label={`manager-email-${p.property_code}`}
+                        />
+                      </td>
+                      <td style={td}>
+                        <input
+                          style={{ ...inp, minWidth: 160 }}
+                          value={managerNameDrafts[p.id] ?? ""}
+                          onChange={(e) => setManagerNameDrafts((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                          onBlur={() => updateManager(p.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              updateManager(p.id);
+                            }
+                          }}
+                          disabled={savingManagerId === p.id}
+                          aria-label={`manager-name-${p.property_code}`}
+                        />
+                      </td>
 
                       <td style={td}>
                         {inquiryUrl ? (
