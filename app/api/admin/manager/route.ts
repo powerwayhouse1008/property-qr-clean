@@ -14,7 +14,7 @@ export async function POST(req: Request) {
 
     const { data: property, error: propertyError } = await supabaseAdmin
       .from("properties")
-      .select("id, manager_name, manager_email")
+      .select("id, manager_name, manager_email, form_url")
       .eq("id", body.property_id)
       .single();
 
@@ -24,20 +24,27 @@ export async function POST(req: Request) {
 
     const prevManagerName = (property.manager_name ?? "").trim();
     const prevManagerEmail = (property.manager_email ?? "").trim();
+    const prevFormUrl = property.form_url ?? null;
     if (prevManagerName === body.manager_name && prevManagerEmail === body.manager_email) {
       return NextResponse.json({ ok: true, changed: false });
     }
 
-    const { error: updateError } = await supabaseAdmin
+    const { data: updated, error: updateError } = await supabaseAdmin
       .from("properties")
       .update({
         manager_name: body.manager_name,
         manager_email: body.manager_email,
       })
-      .eq("id", body.property_id);
+      .eq("id", body.property_id)
+      .select("form_url")
+      .single();
 
     if (updateError) {
       return NextResponse.json({ ok: false, error: updateError.message }, { status: 400 });
+    }
+
+    if ((updated?.form_url ?? null) !== prevFormUrl) {
+      return NextResponse.json({ ok: false, error: "Manager updated, but QR form URL changed unexpectedly." }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true, changed: true });
