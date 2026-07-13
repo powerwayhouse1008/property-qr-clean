@@ -44,21 +44,11 @@ type InquiryHistory = {
 };
 
 function buildInquiryUrl(propertyId: string, savedFormUrl?: string | null) {
-  if (typeof window === "undefined") return savedFormUrl ?? "";
+  if (savedFormUrl) return savedFormUrl;
+  if (typeof window === "undefined") return "";
 
   const origin = window.location.origin.replace(/\/+$/, "");
-
-  if (!savedFormUrl) {
-    return `${origin}/inquiry?property_id=${propertyId}&via=qrcode`;
-  }
-
-  try {
-    const parsed = new URL(savedFormUrl, origin);
-    const via = parsed.searchParams.get("via") || "qrcode";
-    return `${origin}/inquiry?property_id=${propertyId}&via=${encodeURIComponent(via)}`;
-  } catch {
-    return `${origin}/inquiry?property_id=${propertyId}&via=qrcode`;
-  }
+  return `${origin}/inquiry?property_id=${propertyId}&via=qrcode`;
 }
 
 function nextPropertyCode(properties: Property[]) {
