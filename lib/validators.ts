@@ -36,4 +36,7 @@ export const InquirySchema = z.object({
   if (v.inquiry_type === "purchase") {
     if (!v.purchase_file_url) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["purchase_file_url"], message: "purchase file required for purchase" });
   }
+  if (v.inquiry_type === "other") {
+    if (!v.other_text.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["other_text"], message: "other_text required for other" });
+  }
 });

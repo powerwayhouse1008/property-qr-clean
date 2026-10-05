@@ -68,6 +68,7 @@ function formatInquiryError(raw: unknown) {
     if (raw.includes("Invalid email") || raw.includes("person_gmail")) return "メールアドレスの形式が正しくありません。";
     if (raw.includes("visit_datetime required")) return "内見日時を入力してください。";
     if (raw.includes("purchase file required")) return "購入資料ファイルをアップロードしてください。";
+    if (raw.includes("other_text required")) return "その他内容を入力してください。";
     return raw;
   }
 
@@ -207,6 +208,7 @@ export default function InquiryPage() {
         throw new Error("内見時間は08:00〜20:00の30分刻みで選択してください。");
       }
       if (type === "purchase" && !purchaseFile) throw new Error("購入資料ファイルをアップロードしてください。");
+      if (type === "other" && !form.other_text.trim()) throw new Error("その他内容を入力してください。");
 
       const business_card_url = await uploadOne(businessCard);
       const purchase_file_url = purchaseFile ? await uploadOne(purchaseFile) : "";
